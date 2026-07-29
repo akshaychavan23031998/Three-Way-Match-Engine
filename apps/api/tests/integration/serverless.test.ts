@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import request from 'supertest';
 import { describe, expect, it, vi } from 'vitest';
 import { app } from '../../src/app.js';
@@ -54,15 +56,28 @@ describe('Vercel serverless handler', () => {
     expect(html.status).toBe(200);
     expect(html.text).toContain('./swagger-ui-init.js');
     expect(html.headers['content-security-policy']).toContain("script-src 'self' 'unsafe-inline'");
-    for (const asset of [
-      'swagger-ui.css',
-      'swagger-ui-bundle.js',
-      'swagger-ui-standalone-preset.js',
-      'swagger-ui-init.js',
+    for (const [asset, contentType] of [
+      ['swagger-ui.css', 'text/css'],
+      ['swagger-ui-bundle.js', 'application/javascript'],
+      ['swagger-ui-standalone-preset.js', 'application/javascript'],
+      ['swagger-ui-init.js', 'application/javascript'],
     ]) {
-      expect((await request(deployedApp).get(`/api/docs/${asset}`)).status).toBe(200);
+      const response = await request(deployedApp).get(`/api/docs/${asset}`);
+      expect(response.status).toBe(200);
+      expect(response.headers.location).toBeUndefined();
+      expect(response.headers['content-type']).toContain(contentType);
+      expect(response.text.trimStart()).not.toMatch(/^<!DOCTYPE html>/i);
     }
     expect(connect).not.toHaveBeenCalled();
+  });
+
+  it('includes the Swagger static distribution in the Vercel function bundle', () => {
+    const config = JSON.parse(readFileSync(path.resolve(process.cwd(), 'vercel.json'), 'utf8')) as {
+      functions?: Record<string, { includeFiles?: string }>;
+    };
+    expect(config.functions?.['index.ts']?.includeFiles).toBe(
+      '../../node_modules/swagger-ui-dist/**',
+    );
   });
 
   it('uses a relative Swagger server and paths with only one API prefix', () => {

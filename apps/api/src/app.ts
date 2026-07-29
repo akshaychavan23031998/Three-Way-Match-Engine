@@ -97,7 +97,7 @@ app.get('/api/ready', (_req, res) => {
 });
 
 app.get(/^\/api\/docs$/, swaggerCspMiddleware, (_req, res) => {
-  res.status(301).location('/api/docs/').end();
+  res.status(308).location('/api/docs/').end();
 });
 app.use('/api/docs', swaggerCspMiddleware, swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 

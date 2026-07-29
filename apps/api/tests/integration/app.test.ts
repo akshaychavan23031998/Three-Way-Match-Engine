@@ -31,7 +31,7 @@ describe('API foundation', () => {
 
   it('serves Swagger HTML from its canonical trailing-slash URL', async () => {
     const redirect = await request(app).get('/api/docs');
-    expect(redirect.status).toBe(301);
+    expect(redirect.status).toBe(308);
     expect(redirect.headers.location).toBe('/api/docs/');
     for (const directive of swaggerCsp) {
       expect(redirect.headers['content-security-policy']).toContain(directive);
@@ -41,8 +41,10 @@ describe('API foundation', () => {
     expect(response.status).toBe(200);
     expect(response.headers['content-type']).toContain('text/html');
     expect(response.text).toContain('<title>Swagger UI</title>');
+    expect(response.text).toContain('./swagger-ui.css');
     expect(response.text).toContain('./swagger-ui-init.js');
     expect(response.text).toContain('./swagger-ui-bundle.js');
+    expect(response.text).toContain('./swagger-ui-standalone-preset.js');
     expect(response.text).not.toContain('src="/swagger-ui');
     expect(response.text).not.toContain('href="/swagger-ui');
     for (const directive of swaggerCsp) {
@@ -51,18 +53,24 @@ describe('API foundation', () => {
   });
 
   it.each([
-    ['swagger-ui.css', 'text/css'],
-    ['swagger-ui-bundle.js', 'application/javascript'],
-    ['swagger-ui-standalone-preset.js', 'application/javascript'],
-    ['swagger-ui-init.js', 'application/javascript'],
-  ])('serves Swagger asset %s with its route-specific CSP', async (asset, contentType) => {
-    const response = await request(app).get(`/api/docs/${asset}`);
-    expect(response.status).toBe(200);
-    expect(response.headers['content-type']).toContain(contentType);
-    for (const directive of swaggerCsp) {
-      expect(response.headers['content-security-policy']).toContain(directive);
-    }
-  });
+    ['swagger-ui.css', 'text/css', '.swagger-ui'],
+    ['swagger-ui-bundle.js', 'application/javascript', 'SwaggerUIBundle'],
+    ['swagger-ui-standalone-preset.js', 'application/javascript', 'SwaggerUIStandalonePreset'],
+    ['swagger-ui-init.js', 'application/javascript', 'SwaggerUIBundle'],
+  ])(
+    'serves Swagger asset %s without redirecting or returning HTML',
+    async (asset, contentType, bodyMarker) => {
+      const response = await request(app).get(`/api/docs/${asset}`);
+      expect(response.status).toBe(200);
+      expect(response.headers.location).toBeUndefined();
+      expect(response.headers['content-type']).toContain(contentType);
+      expect(response.text.trimStart()).not.toMatch(/^<!DOCTYPE html>/i);
+      expect(response.text).toContain(bodyMarker);
+      for (const directive of swaggerCsp) {
+        expect(response.headers['content-security-policy']).toContain(directive);
+      }
+    },
+  );
 
   it('retains the stricter global Helmet CSP outside Swagger', async () => {
     const response = await request(app).get('/api/health');
