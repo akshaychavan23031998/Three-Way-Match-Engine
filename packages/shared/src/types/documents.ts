@@ -97,7 +97,10 @@ export type Invoice = DocumentCommon &
     invoiceDate: string;
   };
 export type ParsedDocument = ParsedPurchaseOrder | ParsedGrn | ParsedInvoice;
-export type UploadDocumentResponse = PurchaseOrder | Grn | Invoice;
+export type MatchRecalculationStatus = 'completed' | 'failed';
+export type UploadDocumentResponse = (PurchaseOrder | Grn | Invoice) & {
+  matchRecalculationStatus?: MatchRecalculationStatus | undefined;
+};
 export type DocumentSummary = UploadDocumentResponse;
 export interface DocumentListQuery {
   page: number;

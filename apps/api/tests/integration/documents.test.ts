@@ -8,6 +8,7 @@ import { app } from '../../src/app.js';
 import { GrnModel } from '../../src/models/grn.model.js';
 import { InvoiceModel } from '../../src/models/invoice.model.js';
 import { PurchaseOrderModel } from '../../src/models/purchase-order.model.js';
+import { MatchAuditModel } from '../../src/models/match-audit.model.js';
 import * as geminiService from '../../src/services/gemini/gemini.service.js';
 import {
   ensureUploadDirectory,
@@ -56,6 +57,7 @@ afterEach(async () => {
     PurchaseOrderModel.deleteMany({}),
     GrnModel.deleteMany({}),
     InvoiceModel.deleteMany({}),
+    MatchAuditModel.deleteMany({}),
   ]);
   const root = path.dirname(getStoredFilePath('x'));
   for (const name of await readdir(root).catch(() => [])) {
@@ -119,6 +121,8 @@ describe('document processing and API', () => {
     const response = await upload('purchase_order');
     expect(response.status).toBe(201);
     expect(response.body.data.poNumber).toBe('001-PO');
+    expect(response.body.data.matchRecalculationStatus).toBe('completed');
+    expect(await MatchAuditModel.countDocuments({ trigger: 'document_upload' })).toBe(1);
     expect(response.body.data.items[0].skuErpCode).toBe('001');
     expect(response.body.data).not.toHaveProperty('filePath');
     expect(response.body.data).not.toHaveProperty('storedFileName');
@@ -196,6 +200,25 @@ describe('document processing and API', () => {
     expect(response.status).toBe(500);
     expect(await readdir(path.dirname(getStoredFilePath('x')))).toHaveLength(0);
     createSpy.mockRestore();
+  });
+  it('keeps a successful upload when match recomputation fails', async () => {
+    parseSpy.mockResolvedValue(po);
+    const auditSpy = vi
+      .spyOn(MatchAuditModel, 'create')
+      .mockRejectedValueOnce(new Error('matching failed'));
+    const response = await upload('purchase_order');
+    expect(response.status).toBe(201);
+    expect(response.body.data.matchRecalculationStatus).toBe('failed');
+    expect(await PurchaseOrderModel.countDocuments()).toBe(1);
+    expect(
+      await fileExists(
+        response.body.data.id
+          ? ((await PurchaseOrderModel.findById(response.body.data.id).lean())?.storedFileName ??
+              '')
+          : '',
+      ),
+    ).toBe(true);
+    auditSpy.mockRestore();
   });
   it('lists with pagination, filtering and search', async () => {
     parseSpy.mockResolvedValueOnce(po);

@@ -1,6 +1,9 @@
-import type { RequestHandler } from 'express';
-import { AppError } from '../utils/app-error.js';
+import { summaryListQuerySchema } from '../schemas/summary.schema.js';
+import { listSummary } from '../services/summary/summary.service.js';
+import { asyncHandler } from '../utils/async-handler.js';
+import { sendSuccess } from '../utils/response.js';
 
-export const getSummary: RequestHandler = (_req, _res, next) => {
-  next(new AppError(501, 'not_implemented', 'This endpoint has not been implemented yet'));
-};
+export const getSummary = asyncHandler(async (req, res) => {
+  const result = await listSummary(summaryListQuerySchema.parse(req.query));
+  sendSuccess(res, result.data, result.meta);
+});

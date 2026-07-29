@@ -95,6 +95,107 @@ export const swaggerSpec = swaggerJsdoc({
             totalPages: { type: 'integer', minimum: 0 },
           },
         },
+        MatchReason: {
+          type: 'object',
+          required: ['code', 'message', 'severity', 'details'],
+          properties: {
+            code: {
+              type: 'string',
+              enum: [
+                'unmapped_sku',
+                'sku_mapping_conflict',
+                'missing_po_item',
+                'missing_grn_item',
+                'missing_invoice_item',
+                'grn_quantity_mismatch',
+                'invoice_quantity_mismatch',
+                'price_mismatch',
+                'mrp_mismatch',
+                'invoice_before_po',
+                'duplicate_purchase_order',
+                'duplicate_grn',
+                'duplicate_invoice',
+              ],
+            },
+            message: { type: 'string' },
+            severity: { type: 'string', enum: ['warning', 'error'] },
+            details: { type: 'object', additionalProperties: true },
+          },
+        },
+        MatchAudit: {
+          type: 'object',
+          required: [
+            'id',
+            'poNumber',
+            'status',
+            'reasons',
+            'items',
+            'documentReferences',
+            'totals',
+            'computedAt',
+            'computationVersion',
+            'trigger',
+            'triggeredBy',
+          ],
+          properties: {
+            id: { type: 'string' },
+            poNumber: { type: 'string' },
+            status: {
+              type: 'string',
+              enum: ['matched', 'partially_matched', 'mismatched', 'pending'],
+            },
+            reasons: { type: 'array', items: { $ref: '#/components/schemas/MatchReason' } },
+            items: { type: 'array', items: { type: 'object' } },
+            documentReferences: { type: 'array', items: { type: 'object' } },
+            totals: { type: 'object' },
+            computedAt: { type: 'string', format: 'date-time' },
+            computationVersion: { type: 'string', example: '1.0' },
+            trigger: {
+              type: 'string',
+              enum: ['document_upload', 'manual_recompute', 'api_request'],
+            },
+            triggeredBy: { type: 'string' },
+            createdAt: { type: 'string', format: 'date-time' },
+            updatedAt: { type: 'string', format: 'date-time' },
+          },
+        },
+        SummaryRow: {
+          type: 'object',
+          required: [
+            'poNumber',
+            'status',
+            'purchaseOrderCount',
+            'grnCount',
+            'invoiceCount',
+            'poAmount',
+            'invoiceAmount',
+            'amountDifference',
+            'mismatchCount',
+            'warningCount',
+            'updatedAt',
+          ],
+          properties: {
+            poNumber: { type: 'string' },
+            latestMatchAuditId: { type: 'string' },
+            status: {
+              type: 'string',
+              enum: ['matched', 'partially_matched', 'mismatched', 'pending'],
+            },
+            purchaseOrderCount: { type: 'integer' },
+            grnCount: { type: 'integer' },
+            invoiceCount: { type: 'integer' },
+            supplierName: { type: 'string' },
+            poDate: { type: 'string', format: 'date-time' },
+            latestDocumentDate: { type: 'string', format: 'date-time' },
+            poAmount: { type: 'number' },
+            invoiceAmount: { type: 'number' },
+            amountDifference: { type: 'number' },
+            mismatchCount: { type: 'integer' },
+            warningCount: { type: 'integer' },
+            lastComputedAt: { type: 'string', format: 'date-time' },
+            updatedAt: { type: 'string', format: 'date-time' },
+          },
+        },
       },
       responses: {
         ValidationError: {
@@ -453,6 +554,133 @@ export const swaggerSpec = swaggerJsdoc({
             '400': { $ref: '#/components/responses/ValidationError' },
             '401': { $ref: '#/components/responses/Unauthorized' },
             '404': { $ref: '#/components/responses/NotFound' },
+            '500': { $ref: '#/components/responses/ServerError' },
+          },
+        },
+      },
+      '/matches/audits/{id}': {
+        get: {
+          summary: 'Get a persisted match audit',
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            {
+              name: 'id',
+              in: 'path',
+              required: true,
+              schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' },
+            },
+          ],
+          responses: {
+            '200': { description: 'Match audit snapshot' },
+            '400': { $ref: '#/components/responses/ValidationError' },
+            '401': { $ref: '#/components/responses/Unauthorized' },
+            '404': { $ref: '#/components/responses/NotFound' },
+            '500': { $ref: '#/components/responses/ServerError' },
+          },
+        },
+      },
+      '/matches/{poNumber}': {
+        get: {
+          summary: 'Get the latest match, computing it when absent',
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            {
+              name: 'poNumber',
+              in: 'path',
+              required: true,
+              schema: { type: 'string', minLength: 1, maxLength: 100 },
+            },
+          ],
+          responses: {
+            '200': {
+              description: 'Latest match snapshot',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/SuccessResponse' },
+                },
+              },
+            },
+            '400': { $ref: '#/components/responses/ValidationError' },
+            '401': { $ref: '#/components/responses/Unauthorized' },
+            '500': { $ref: '#/components/responses/ServerError' },
+          },
+        },
+      },
+      '/matches/{poNumber}/recompute': {
+        post: {
+          summary: 'Recompute and persist a match snapshot',
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            {
+              name: 'poNumber',
+              in: 'path',
+              required: true,
+              schema: { type: 'string', minLength: 1, maxLength: 100 },
+            },
+          ],
+          responses: {
+            '200': { description: 'New match snapshot' },
+            '400': { $ref: '#/components/responses/ValidationError' },
+            '401': { $ref: '#/components/responses/Unauthorized' },
+            '500': { $ref: '#/components/responses/ServerError' },
+          },
+        },
+      },
+      '/matches/{poNumber}/history': {
+        get: {
+          summary: 'List match audit history newest first',
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            { name: 'poNumber', in: 'path', required: true, schema: { type: 'string' } },
+            { name: 'page', in: 'query', schema: { type: 'integer', default: 1, minimum: 1 } },
+            {
+              name: 'limit',
+              in: 'query',
+              schema: { type: 'integer', default: 20, minimum: 1, maximum: 100 },
+            },
+          ],
+          responses: {
+            '200': { description: 'Paginated match history' },
+            '400': { $ref: '#/components/responses/ValidationError' },
+            '401': { $ref: '#/components/responses/Unauthorized' },
+            '500': { $ref: '#/components/responses/ServerError' },
+          },
+        },
+      },
+      '/summary': {
+        get: {
+          summary: 'List PO-level document and latest-match summaries',
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            { name: 'page', in: 'query', schema: { type: 'integer', default: 1, minimum: 1 } },
+            {
+              name: 'limit',
+              in: 'query',
+              schema: { type: 'integer', default: 20, minimum: 1, maximum: 100 },
+            },
+            { name: 'search', in: 'query', schema: { type: 'string' } },
+            {
+              name: 'status',
+              in: 'query',
+              schema: {
+                type: 'string',
+                enum: ['matched', 'partially_matched', 'mismatched', 'pending'],
+              },
+            },
+            {
+              name: 'sortBy',
+              in: 'query',
+              schema: {
+                type: 'string',
+                enum: ['updatedAt', 'poNumber', 'status', 'invoiceAmount', 'amountDifference'],
+              },
+            },
+            { name: 'sortOrder', in: 'query', schema: { type: 'string', enum: ['asc', 'desc'] } },
+          ],
+          responses: {
+            '200': { description: 'Paginated summary rows' },
+            '400': { $ref: '#/components/responses/ValidationError' },
+            '401': { $ref: '#/components/responses/Unauthorized' },
             '500': { $ref: '#/components/responses/ServerError' },
           },
         },

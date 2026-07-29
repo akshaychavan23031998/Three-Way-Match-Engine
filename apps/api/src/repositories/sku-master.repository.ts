@@ -64,6 +64,17 @@ export const findSkuMasterByNormalizedEanCode = async (
     .lean<SkuMasterRecord>()
     .exec();
 
+export const findSkuMastersByNormalizedCodes = async (
+  erpCodes: string[],
+  eanCodes: string[],
+): Promise<SkuMasterRecord[]> => {
+  const conditions: FilterQuery<SkuMasterPersistence>[] = [];
+  if (erpCodes.length > 0) conditions.push({ normalizedSkuErpCode: { $in: erpCodes } });
+  if (eanCodes.length > 0) conditions.push({ normalizedEanCode: { $in: eanCodes } });
+  if (conditions.length === 0) return [];
+  return SkuMasterModel.find({ $or: conditions }).lean<SkuMasterRecord[]>().exec();
+};
+
 export const listSkuMasters = async (options: SkuMasterListOptions): Promise<SkuMasterRecord[]> => {
   const direction: SortOrder = options.sortOrder === 'asc' ? 1 : -1;
   return SkuMasterModel.find(searchFilter(options.search))

@@ -109,9 +109,15 @@ export const deleteDocumentById = async (located: LocatedDocument): Promise<bool
     return (await GrnModel.deleteOne({ _id: located.document._id })).deletedCount === 1;
   return (await InvoiceModel.deleteOne({ _id: located.document._id })).deletedCount === 1;
 };
+export const findPurchaseOrdersByNormalizedPoNumber = (value: string) =>
+  PurchaseOrderModel.find({ normalizedPoNumber: value })
+    .sort({ createdAt: 1, _id: 1 })
+    .lean()
+    .exec();
+/** @deprecated Use findPurchaseOrdersByNormalizedPoNumber. */
 export const findPurchaseOrderByNormalizedPoNumber = (value: string) =>
   PurchaseOrderModel.findOne({ normalizedPoNumber: value }).lean().exec();
 export const findGrnsByNormalizedPoNumber = (value: string) =>
-  GrnModel.find({ normalizedPoNumber: value }).lean().exec();
+  GrnModel.find({ normalizedPoNumber: value }).sort({ createdAt: 1, _id: 1 }).lean().exec();
 export const findInvoicesByNormalizedPoNumber = (value: string) =>
-  InvoiceModel.find({ normalizedPoNumber: value }).lean().exec();
+  InvoiceModel.find({ normalizedPoNumber: value }).sort({ createdAt: 1, _id: 1 }).lean().exec();
