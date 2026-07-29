@@ -38,7 +38,7 @@ const schema = new Schema(
     computationVersion: { type: String, enum: ['1.0'], required: true },
     trigger: {
       type: String,
-      enum: ['document_upload', 'manual_recompute', 'api_request'],
+      enum: ['document_upload', 'document_delete', 'manual_recompute', 'api_request'],
       required: true,
     },
     triggeredBy: { type: String, required: true, trim: true },

@@ -1,0 +1,9 @@
+{
+  "scenario": "duplicate_documents",
+  "poNumber": "SAMPLE-DUP-001",
+  "expectedStatus": "mismatched",
+  "purchaseOrders": ["SAMPLE-DUP-001", "SAMPLE-DUP-001"],
+  "grns": ["SAMPLE-GRN-001", "SAMPLE-GRN-001"],
+  "invoices": ["SAMPLE-INV-001", "SAMPLE-INV-001"],
+  "expectedReasonCodes": ["duplicate_purchase_order", "duplicate_grn", "duplicate_invoice"]
+}

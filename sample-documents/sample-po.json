@@ -1,0 +1,19 @@
+{
+  "poNumber": "CI4PO05788",
+  "poDate": "2026-07-01",
+  "supplierName": "Sample Foods Private Limited",
+  "currency": "INR",
+  "items": [
+    {
+      "lineNumber": 1,
+      "skuErpCode": "11423",
+      "eanCode": "FG-P-F-0503",
+      "description": "PSM Cheesy Spicy Vegetable Momos 24Pcs",
+      "uom": "PKT",
+      "quantity": 10,
+      "unitPrice": 220.76,
+      "mrp": 305
+    }
+  ],
+  "totalAmount": 2207.6
+}

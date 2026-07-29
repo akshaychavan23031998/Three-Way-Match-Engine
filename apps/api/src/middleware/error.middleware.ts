@@ -53,7 +53,7 @@ const describeError = (error: unknown): ErrorDescriptor => {
       message: isSizeError
         ? 'Uploaded file exceeds the maximum allowed size'
         : 'File upload failed',
-      details: isSizeError ? { maxSizeMb: env.MAX_UPLOAD_SIZE_MB } : null,
+      details: isSizeError ? { maxSizeMb: env.MAX_UPLOAD_SIZE_BYTES / (1024 * 1024) } : null,
     };
   }
   if (
@@ -78,13 +78,22 @@ const describeError = (error: unknown): ErrorDescriptor => {
 };
 
 const redact = (value: string): string => {
-  const secrets = [env.GEMINI_API_KEY, env.STATIC_AUTH_TOKEN, env.MONGODB_URI].filter(Boolean);
+  const secrets = [env.GEMINI_API_KEY, env.AUTH_TOKEN, env.MONGODB_URI].filter(Boolean);
   return secrets.reduce((sanitized, secret) => sanitized.replaceAll(secret, '[REDACTED]'), value);
 };
 
 export const errorMiddleware: ErrorRequestHandler = (error: unknown, _req, res, _next) => {
   const descriptor = describeError(error);
-  const isOperational = error instanceof AppError && error.isOperational;
+  const isOperational =
+    (error instanceof AppError && error.isOperational) ||
+    error instanceof ZodError ||
+    error instanceof mongoose.Error.ValidationError ||
+    error instanceof mongoose.Error.CastError ||
+    error instanceof multer.MulterError ||
+    (typeof error === 'object' &&
+      error !== null &&
+      'code' in error &&
+      (error as { code?: unknown }).code === 11000);
 
   if (!isOperational) {
     const internalMessage =

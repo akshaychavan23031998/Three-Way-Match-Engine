@@ -4,7 +4,7 @@ export const swaggerSpec = swaggerJsdoc({
   definition: {
     openapi: '3.0.3',
     info: { title: 'Three-Way Match Engine API', version: '1.0.0' },
-    servers: [{ url: 'http://localhost:5000/api' }],
+    servers: [{ url: 'http://localhost:4000/api' }],
     components: {
       securitySchemes: {
         bearerAuth: { type: 'http', scheme: 'bearer', bearerFormat: 'Static token' },
@@ -152,7 +152,7 @@ export const swaggerSpec = swaggerJsdoc({
             computationVersion: { type: 'string', example: '1.0' },
             trigger: {
               type: 'string',
-              enum: ['document_upload', 'manual_recompute', 'api_request'],
+              enum: ['document_upload', 'document_delete', 'manual_recompute', 'api_request'],
             },
             triggeredBy: { type: 'string' },
             createdAt: { type: 'string', format: 'date-time' },
@@ -256,6 +256,15 @@ export const swaggerSpec = swaggerJsdoc({
           },
         },
       },
+      '/ready': {
+        get: {
+          summary: 'Check API and database readiness',
+          responses: {
+            '200': { description: 'API is ready to serve traffic' },
+            '503': { description: 'Database is not connected' },
+          },
+        },
+      },
       '/auth/login': {
         post: {
           summary: 'Log in with scaffold credentials',
@@ -291,6 +300,16 @@ export const swaggerSpec = swaggerJsdoc({
                 },
               },
             },
+          },
+        },
+      },
+      '/auth/validate': {
+        get: {
+          summary: 'Validate the current bearer token',
+          security: [{ bearerAuth: [] }],
+          responses: {
+            '200': { description: 'Token is valid' },
+            '401': { $ref: '#/components/responses/Unauthorized' },
           },
         },
       },
@@ -395,7 +414,14 @@ export const swaggerSpec = swaggerJsdoc({
           summary: 'Delete a parsed document and stored file',
           security: [{ bearerAuth: [] }],
           responses: {
-            '204': { description: 'Document deleted' },
+            '200': {
+              description: 'Document deleted and match recalculation attempted',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/SuccessResponse' },
+                },
+              },
+            },
             '400': { $ref: '#/components/responses/ValidationError' },
             '401': { $ref: '#/components/responses/Unauthorized' },
             '404': { $ref: '#/components/responses/NotFound' },

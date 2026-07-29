@@ -45,8 +45,12 @@ export default function DocumentsPage() {
   const remove = async () => {
     if (!deleting) return;
     try {
-      await deletion.mutateAsync({ id: deleting.id, poNumber: deleting.poNumber });
-      setFeedback('Document deleted successfully.');
+      const result = await deletion.mutateAsync({ id: deleting.id, poNumber: deleting.poNumber });
+      setFeedback(
+        result.matchRecalculationStatus === 'completed'
+          ? 'Document deleted successfully. Match results were refreshed.'
+          : 'Document deleted successfully, but match refresh failed. Recompute it manually.',
+      );
       setDeleting(undefined);
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'Document deletion failed.');

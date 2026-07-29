@@ -31,6 +31,32 @@ describe('API foundation', () => {
     });
   });
 
+  it('validates a valid token without depending on a paginated resource', async () => {
+    const response = await request(app)
+      .get('/api/auth/validate')
+      .set('Authorization', `Bearer ${validToken}`);
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      success: true,
+      data: { authenticated: true },
+    });
+  });
+
+  it('rejects token validation without a bearer token', async () => {
+    const response = await request(app).get('/api/auth/validate');
+    expect(response.status).toBe(401);
+  });
+
+  it('reports database readiness without exposing connection details', async () => {
+    const response = await request(app).get('/api/ready');
+    expect([200, 503]).toContain(response.status);
+    expect(response.body.data).toMatchObject({
+      status: response.status === 200 ? 'ready' : 'not_ready',
+      database: response.status === 200 ? 'connected' : 'disconnected',
+    });
+    expect(JSON.stringify(response.body)).not.toContain('mongodb://');
+  });
+
   it('rejects an invalid login email', async () => {
     const response = await request(app)
       .post('/api/auth/login')

@@ -16,3 +16,5 @@ export const disconnectDatabase = async (): Promise<void> => {
     console.info('MongoDB connection closed');
   }
 };
+
+export const isDatabaseReady = (): boolean => mongoose.connection.readyState === 1;

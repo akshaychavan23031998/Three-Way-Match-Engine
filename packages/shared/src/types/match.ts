@@ -2,7 +2,8 @@ import type { MatchReasonCode } from '../constants/match-reasons.js';
 import type { MatchStatus } from '../constants/match-status.js';
 
 export type MatchReasonSeverity = 'warning' | 'error';
-export type MatchTrigger = 'document_upload' | 'manual_recompute' | 'api_request';
+export type MatchTrigger =
+  'document_upload' | 'document_delete' | 'manual_recompute' | 'api_request';
 export type SkuResolutionMethod = 'erp' | 'ean' | 'unresolved' | 'conflict';
 
 export interface MatchReason {

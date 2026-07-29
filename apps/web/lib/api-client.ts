@@ -8,6 +8,8 @@ import type {
   ApiErrorResponse,
   ApiSuccessResponse,
   CreateSkuMasterInput,
+  DeleteDocumentResponse,
+  DocumentDetail,
   DocumentListQuery,
   DocumentSummary,
   MatchAudit,
@@ -164,8 +166,8 @@ export class ApiClient {
     return { data: typed.data, meta: meta as PaginationMeta };
   }
 
-  validateToken = (signal?: AbortSignal): Promise<SummaryRow[]> =>
-    this.request({ method: 'GET', url: '/summary', params: { limit: 1 } }, signal);
+  validateToken = (signal?: AbortSignal): Promise<{ authenticated: true }> =>
+    this.request({ method: 'GET', url: '/auth/validate' }, signal);
 
   listSkuMasters = (query: SkuMasterListQuery, signal?: AbortSignal) =>
     this.paginated<SkuMaster>(
@@ -187,11 +189,11 @@ export class ApiClient {
       signal,
     );
   getDocument = (id: string, signal?: AbortSignal) =>
-    this.request<DocumentSummary>({ method: 'GET', url: `/documents/${id}` }, signal);
+    this.request<DocumentDetail>({ method: 'GET', url: `/documents/${id}` }, signal);
   uploadDocument = (form: FormData) =>
     this.request<UploadDocumentResponse>({ method: 'POST', url: '/documents/upload', data: form });
   deleteDocument = (id: string) =>
-    this.request<void>({ method: 'DELETE', url: `/documents/${id}` });
+    this.request<DeleteDocumentResponse>({ method: 'DELETE', url: `/documents/${id}` });
 
   getMatch = (poNumber: string, signal?: AbortSignal) =>
     this.request<MatchAudit>(

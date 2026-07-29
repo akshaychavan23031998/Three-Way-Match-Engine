@@ -7,7 +7,7 @@ let isShuttingDown = false;
 const formatFatalError = (error: unknown): string => {
   if (!(error instanceof Error)) return 'Unknown fatal error';
   const raw = env.NODE_ENV === 'production' ? error.message : (error.stack ?? error.message);
-  return [env.GEMINI_API_KEY, env.STATIC_AUTH_TOKEN, env.MONGODB_URI]
+  return [env.GEMINI_API_KEY, env.AUTH_TOKEN, env.MONGODB_URI]
     .filter(Boolean)
     .reduce((sanitized, secret) => sanitized.replaceAll(secret, '[REDACTED]'), raw);
 };

@@ -21,6 +21,26 @@ export function Modal({
     panel.current?.focus();
     const keydown = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && onClose) onClose();
+      if (event.key !== 'Tab' || !panel.current) return;
+      const focusable = [
+        ...panel.current.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])',
+        ),
+      ].filter((element) => !element.hasAttribute('hidden'));
+      if (!focusable.length) {
+        event.preventDefault();
+        panel.current.focus();
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable.at(-1);
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last?.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first?.focus();
+      }
     };
     document.addEventListener('keydown', keydown);
     return () => {

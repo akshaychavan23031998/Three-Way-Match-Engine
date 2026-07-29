@@ -52,6 +52,15 @@ describe('API client', () => {
     await new ApiClient('/api', adapter).request({ url: '/test' });
     expect(adapter.mock.calls[0]?.[0].headers?.Authorization).toBe('Bearer secret-token');
   });
+  it('validates auth against the non-paginated auth endpoint', async () => {
+    const adapter = vi.fn<AxiosAdapter>(async (config) =>
+      response(config, 200, { success: true, data: { authenticated: true } }),
+    );
+    await expect(new ApiClient('/api', adapter).validateToken()).resolves.toEqual({
+      authenticated: true,
+    });
+    expect(adapter.mock.calls[0]?.[0].url).toBe('/auth/validate');
+  });
   it('clears auth and invokes the 401 handler once', async () => {
     authStorage.set('secret-token');
     const handler = vi.fn();

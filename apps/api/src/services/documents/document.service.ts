@@ -1,4 +1,5 @@
 import type {
+  DeleteDocumentResponse,
   DocumentListQuery,
   DocumentSummary,
   PaginationMeta,
@@ -12,6 +13,7 @@ import {
   type DocumentRecord,
 } from '../../repositories/document.repository.js';
 import { AppError } from '../../utils/app-error.js';
+import { computeMatchForPoNumber } from '../matching/compute-match.service.js';
 import { deleteStoredFile } from './file-storage.service.js';
 
 export const serializeDocument = (record: DocumentRecord): UploadDocumentResponse => {
@@ -90,9 +92,24 @@ export const listDocuments = async (
     },
   };
 };
-export const deleteDocument = async (id: string): Promise<void> => {
+export const deleteDocument = async (
+  id: string,
+  triggeredBy: string,
+): Promise<DeleteDocumentResponse> => {
   const found = await findDocumentById(id);
   if (!found) throw notFound();
+  const poNumber = found.document.poNumber;
   await deleteDocumentById(found);
   await deleteStoredFile(found.document.storedFileName);
+  try {
+    await computeMatchForPoNumber(poNumber, {
+      trigger: 'document_delete',
+      triggeredBy,
+      persistAudit: true,
+    });
+    return { matchRecalculationStatus: 'completed' };
+  } catch {
+    console.error('Match recomputation failed after a successful document deletion');
+    return { matchRecalculationStatus: 'failed' };
+  }
 };

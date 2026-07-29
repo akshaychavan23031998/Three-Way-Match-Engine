@@ -21,7 +21,7 @@ const storage = multer.diskStorage({
 });
 const uploader = multer({
   storage,
-  limits: { fileSize: env.MAX_UPLOAD_SIZE_MB * 1024 * 1024, files: 1 },
+  limits: { fileSize: env.MAX_UPLOAD_SIZE_BYTES, files: 1 },
   fileFilter: (_req, file, callback) => {
     if (
       !mimeTypes.has(file.mimetype.toLowerCase()) ||

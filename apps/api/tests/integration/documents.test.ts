@@ -9,7 +9,9 @@ import { GrnModel } from '../../src/models/grn.model.js';
 import { InvoiceModel } from '../../src/models/invoice.model.js';
 import { PurchaseOrderModel } from '../../src/models/purchase-order.model.js';
 import { MatchAuditModel } from '../../src/models/match-audit.model.js';
+import { SkuMasterModel } from '../../src/models/sku-master.model.js';
 import * as geminiService from '../../src/services/gemini/gemini.service.js';
+import { seedSkuMaster } from '../../scripts/seed-sku-master.js';
 import {
   ensureUploadDirectory,
   fileExists,
@@ -58,6 +60,7 @@ afterEach(async () => {
     GrnModel.deleteMany({}),
     InvoiceModel.deleteMany({}),
     MatchAuditModel.deleteMany({}),
+    SkuMasterModel.deleteMany({}),
   ]);
   const root = path.dirname(getStoredFilePath('x'));
   for (const name of await readdir(root).catch(() => [])) {
@@ -70,6 +73,11 @@ afterAll(async () => {
   await rm(path.dirname(getStoredFilePath('x')), { recursive: true, force: true });
 });
 describe('document upload validation', () => {
+  it('reports ready when the test database is connected', async () => {
+    const response = await request(app).get('/api/ready');
+    expect(response.status).toBe(200);
+    expect(response.body.data).toMatchObject({ status: 'ready', database: 'connected' });
+  });
   it('rejects missing bearer token', async () =>
     expect((await request(app).post(`${endpoint}/upload`)).status).toBe(401));
   it('rejects missing document type and cleans the file', async () =>
@@ -256,9 +264,9 @@ describe('document processing and API', () => {
     const created = await upload('purchase_order');
     const stored = await PurchaseOrderModel.findById(created.body.data.id).lean();
     await rm(getStoredFilePath(stored?.storedFileName ?? ''), { force: true });
-    expect(
-      (await request(app).delete(`${endpoint}/${created.body.data.id}`).set(auth)).status,
-    ).toBe(204);
+    const deleted = await request(app).delete(`${endpoint}/${created.body.data.id}`).set(auth);
+    expect(deleted.status).toBe(200);
+    expect(deleted.body.data.matchRecalculationStatus).toBe('completed');
     expect((await request(app).get(`${endpoint}/${created.body.data.id}`).set(auth)).status).toBe(
       404,
     );
@@ -270,8 +278,20 @@ describe('document processing and API', () => {
     expect(await fileExists(stored?.storedFileName ?? '')).toBe(true);
     expect(
       (await request(app).delete(`${endpoint}/${created.body.data.id}`).set(auth)).status,
-    ).toBe(204);
+    ).toBe(200);
     expect(await fileExists(stored?.storedFileName ?? '')).toBe(false);
+  });
+  it('keeps deletion successful when match recomputation fails', async () => {
+    parseSpy.mockResolvedValue(po);
+    const created = await upload('purchase_order');
+    const auditSpy = vi
+      .spyOn(MatchAuditModel, 'create')
+      .mockRejectedValueOnce(new Error('audit unavailable'));
+    const response = await request(app).delete(`${endpoint}/${created.body.data.id}`).set(auth);
+    expect(response.status).toBe(200);
+    expect(response.body.data.matchRecalculationStatus).toBe('failed');
+    expect(await PurchaseOrderModel.findById(created.body.data.id)).toBeNull();
+    auditSpy.mockRestore();
   });
   it('uses unique safe stored names that cannot traverse', async () => {
     parseSpy.mockResolvedValueOnce(po);
@@ -281,5 +301,108 @@ describe('document processing and API', () => {
     const records = await PurchaseOrderModel.find().lean();
     expect(new Set(records.map((r) => r.storedFileName)).size).toBe(2);
     expect(records.every((r) => !r.storedFileName.includes('..'))).toBe(true);
+  });
+
+  it('runs the seeded upload, match, summary, recompute, mismatch, and deletion flow', async () => {
+    expect(await seedSkuMaster()).toEqual({ created: 5, updated: 0, unchanged: 0 });
+    const fixturePo = {
+      poNumber: 'CI4PO05788',
+      poDate: '2026-07-01',
+      supplierName: 'Sample Foods Private Limited',
+      currency: 'INR',
+      items: [
+        {
+          skuErpCode: '11423',
+          eanCode: 'FG-P-F-0503',
+          description: 'PSM Cheesy Spicy Vegetable Momos 24Pcs',
+          quantity: 10,
+          unitPrice: 220.76,
+          mrp: 305,
+        },
+      ],
+      totalAmount: 2207.6,
+    };
+    const fixtureGrn = {
+      grnNumber: 'CI4000020234',
+      grnDate: '2026-07-02',
+      poNumber: 'CI4PO05788',
+      items: [
+        {
+          skuErpCode: '11423',
+          eanCode: 'FG-P-F-0503',
+          description: 'PSM Cheesy Spicy Vegetable Momos 24Pcs',
+          receivedQuantity: 10,
+          acceptedQuantity: 10,
+          rejectedQuantity: 0,
+          mrp: 305,
+        },
+      ],
+    };
+    const fixtureInvoice = {
+      invoiceNumber: 'IN25MH2504251',
+      invoiceDate: '2026-07-03',
+      poNumber: 'CI4PO05788',
+      items: [
+        {
+          skuErpCode: '11423',
+          eanCode: 'FG-P-F-0503',
+          description: 'PSM Cheesy Spicy Vegetable Momos 24Pcs',
+          invoicedQuantity: 10,
+          unitPrice: 220.76,
+          mrp: 305,
+        },
+      ],
+    };
+
+    parseSpy
+      .mockResolvedValueOnce(fixturePo)
+      .mockResolvedValueOnce(fixtureGrn)
+      .mockResolvedValueOnce(fixtureInvoice);
+    expect((await upload('purchase_order', 'sample-po.pdf')).status).toBe(201);
+    expect((await upload('grn', 'sample-grn.pdf')).status).toBe(201);
+    const invoiceUpload = await upload('invoice', 'sample-invoice.pdf');
+    expect(invoiceUpload.status).toBe(201);
+
+    const latest = await request(app).get('/api/matches/CI4PO05788').set(auth);
+    expect(latest.body.data.status).toBe('matched');
+    expect(latest.body.data.totals).toMatchObject({
+      orderedQuantity: 10,
+      acceptedQuantity: 10,
+      invoicedQuantity: 10,
+    });
+    const summary = await request(app).get('/api/summary?search=CI4PO05788').set(auth);
+    expect(summary.body.meta.total).toBe(1);
+    expect(summary.body.data[0]).toMatchObject({
+      status: 'matched',
+      purchaseOrderCount: 1,
+      grnCount: 1,
+      invoiceCount: 1,
+    });
+    expect(
+      (await request(app).post('/api/matches/CI4PO05788/recompute').set(auth)).body.data.trigger,
+    ).toBe('manual_recompute');
+
+    parseSpy.mockResolvedValueOnce({
+      ...fixtureInvoice,
+      invoiceNumber: 'IN25MH2504252',
+      items: [{ ...fixtureInvoice.items[0], invoicedQuantity: 5 }],
+    });
+    const mismatchingInvoice = await upload('invoice', 'extra-invoice.pdf');
+    expect((await request(app).get('/api/matches/CI4PO05788').set(auth)).body.data.status).toBe(
+      'mismatched',
+    );
+
+    const deletion = await request(app)
+      .delete(`${endpoint}/${mismatchingInvoice.body.data.id}`)
+      .set(auth);
+    expect(deletion.body.data.matchRecalculationStatus).toBe('completed');
+    const refreshed = await request(app).get('/api/matches/CI4PO05788').set(auth);
+    expect(refreshed.body.data.status).toBe('matched');
+    expect(refreshed.body.data.trigger).toBe('document_delete');
+    const history = await request(app)
+      .get('/api/matches/CI4PO05788/history?page=1&limit=20')
+      .set(auth);
+    expect(history.body.meta.total).toBe(6);
+    expect(history.body.data[0].id).toBe(refreshed.body.data.id);
   });
 });

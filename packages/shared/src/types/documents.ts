@@ -102,6 +102,10 @@ export type UploadDocumentResponse = (PurchaseOrder | Grn | Invoice) & {
   matchRecalculationStatus?: MatchRecalculationStatus | undefined;
 };
 export type DocumentSummary = UploadDocumentResponse;
+export type DocumentDetail = PurchaseOrder | Grn | Invoice;
+export interface DeleteDocumentResponse {
+  matchRecalculationStatus: MatchRecalculationStatus;
+}
 export interface DocumentListQuery {
   page: number;
   limit: number;

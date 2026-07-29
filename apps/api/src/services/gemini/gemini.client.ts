@@ -28,16 +28,20 @@ export const parseDocumentWithGemini = async (input: GeminiDocumentInput): Promi
     generationConfig: { responseMimeType: 'application/json' },
   });
   const data = (await readStoredFile(input.storedFileName)).toString('base64');
-  const operation = model
-    .generateContent([
-      { inlineData: { data, mimeType: input.mimeType } },
-      { text: promptFor(input.documentType) },
-    ])
-    .then((result) => result.response.text());
-  return Promise.race([
-    operation,
-    new Promise<never>((_resolve, reject) =>
-      setTimeout(() => reject(new Error('Gemini request timed out')), 30_000),
-    ),
-  ]);
+  let timeout: NodeJS.Timeout | undefined;
+  try {
+    return await Promise.race([
+      model
+        .generateContent([
+          { inlineData: { data, mimeType: input.mimeType } },
+          { text: promptFor(input.documentType) },
+        ])
+        .then((result) => result.response.text()),
+      new Promise<never>((_resolve, reject) => {
+        timeout = setTimeout(() => reject(new Error('Gemini request timed out')), 30_000);
+      }),
+    ]);
+  } finally {
+    if (timeout) clearTimeout(timeout);
+  }
 };

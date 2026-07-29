@@ -17,7 +17,7 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "npm run test:api",
+    "test": "npm run test:api && npm run test:web",
     "test:api": "npm run test -w @three-way-match/api",
     "test:web": "npm run test -w @three-way-match/web",
     "typecheck": "npm run typecheck -w @three-way-match/shared && npm run typecheck -w @three-way-match/api && npm run typecheck -w @three-way-match/web",

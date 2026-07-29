@@ -11,5 +11,5 @@ export const authenticate = (email: string, password: string): LoginResult => {
     throw new Error('Validated credentials are required');
   }
 
-  return { token: env.STATIC_AUTH_TOKEN, tokenType: 'Bearer' };
+  return { token: env.AUTH_TOKEN, tokenType: 'Bearer' };
 };

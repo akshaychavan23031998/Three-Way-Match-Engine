@@ -9,3 +9,7 @@ type LoginBody = z.infer<typeof loginSchema>;
 export const login: RequestHandler<Record<string, never>, unknown, LoginBody> = (req, res) => {
   sendSuccess(res, authenticate(req.body.email, req.body.password));
 };
+
+export const validateAuth: RequestHandler = (_req, res) => {
+  sendSuccess(res, { authenticated: true });
+};

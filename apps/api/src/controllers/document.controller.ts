@@ -11,7 +11,7 @@ import {
 import { processDocumentUpload } from '../services/documents/document-upload.service.js';
 import { AppError } from '../utils/app-error.js';
 import { asyncHandler } from '../utils/async-handler.js';
-import { sendCreated, sendNoContent, sendSuccess } from '../utils/response.js';
+import { sendCreated, sendSuccess } from '../utils/response.js';
 
 export const uploadDocument = asyncHandler<Record<string, never>, unknown, UploadDocumentBody>(
   async (req, res) => {
@@ -35,6 +35,6 @@ export const getDocument = asyncHandler<DocumentIdParams>(async (req, res) => {
   sendSuccess(res, await getDocumentById(req.params.id));
 });
 export const deleteDocument = asyncHandler<DocumentIdParams>(async (req, res) => {
-  await deleteService(req.params.id);
-  sendNoContent(res);
+  if (!req.user) throw new AppError(401, 'unauthorized', 'A valid bearer token is required');
+  sendSuccess(res, await deleteService(req.params.id, req.user.email));
 });

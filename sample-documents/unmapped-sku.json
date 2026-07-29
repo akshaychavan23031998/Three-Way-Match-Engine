@@ -1,0 +1,11 @@
+{
+  "scenario": "unmapped_sku",
+  "poNumber": "SAMPLE-UNMAPPED-001",
+  "expectedStatus": "mismatched",
+  "item": {
+    "skuErpCode": "UNKNOWN-ERP-001",
+    "eanCode": "UNKNOWN-EAN-001",
+    "description": "Synthetic unmapped item"
+  },
+  "expectedReasonCodes": ["unmapped_sku"]
+}

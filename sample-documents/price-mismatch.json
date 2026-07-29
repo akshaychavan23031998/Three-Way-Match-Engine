@@ -1,0 +1,9 @@
+{
+  "scenario": "price_mismatch",
+  "poNumber": "SAMPLE-PRICE-001",
+  "expectedStatus": "mismatched",
+  "purchaseOrder": { "unitPrice": 100 },
+  "invoice": { "unitPrice": 110 },
+  "skuMaster": { "priceTolerance": 0.05 },
+  "expectedReasonCodes": ["price_mismatch"]
+}

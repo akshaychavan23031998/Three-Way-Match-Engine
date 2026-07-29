@@ -22,7 +22,7 @@ export const requireAuth: RequestHandler = (req, res, next) => {
   const authorization = req.header('authorization');
   const match = authorization?.match(/^Bearer ([^\s]+)$/);
 
-  if (!match?.[1] || !tokensMatch(match[1], env.STATIC_AUTH_TOKEN)) {
+  if (!match?.[1] || !tokensMatch(match[1], env.AUTH_TOKEN)) {
     unauthorized(res);
     return;
   }

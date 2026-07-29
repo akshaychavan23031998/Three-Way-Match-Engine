@@ -1,0 +1,9 @@
+{
+  "scenario": "quantity_mismatch",
+  "poNumber": "SAMPLE-QTY-001",
+  "expectedStatus": "mismatched",
+  "purchaseOrder": { "orderedQuantity": 10 },
+  "grn": { "receivedQuantity": 8, "acceptedQuantity": 8, "rejectedQuantity": 0 },
+  "invoice": { "invoicedQuantity": 9 },
+  "expectedReasonCodes": ["grn_quantity_mismatch", "invoice_quantity_mismatch"]
+}
