@@ -13,6 +13,7 @@
     "dev:web": "npm run dev -w @three-way-match/web",
     "build": "npm run build -w @three-way-match/shared && npm run build:api && npm run build:web",
     "build:shared": "npm run build -w @three-way-match/shared",
+    "verify:shared-runtime": "npm run build:shared && node --input-type=module -e \"const resolved = import.meta.resolve('@three-way-match/shared'); if (!resolved.endsWith('/dist/index.js')) throw new Error('Shared runtime resolved to ' + resolved); await import('@three-way-match/shared'); console.log('shared runtime import ok: ' + resolved);\"",
     "build:api": "npm run build -w @three-way-match/api",
     "build:web": "npm run build -w @three-way-match/web",
     "vercel-build:api": "npm run build:shared && npm run build:api",
@@ -23,7 +24,7 @@
     "test": "npm run test:api && npm run test:web",
     "test:api": "npm run test -w @three-way-match/api",
     "test:web": "npm run test -w @three-way-match/web",
-    "typecheck": "npm run typecheck -w @three-way-match/shared && npm run typecheck -w @three-way-match/api && npm run typecheck -w @three-way-match/web",
+    "typecheck": "npm run build:shared && npm run typecheck -w @three-way-match/shared && npm run typecheck -w @three-way-match/api && npm run typecheck -w @three-way-match/web",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
     "seed:sku": "npm run seed -w @three-way-match/api"
