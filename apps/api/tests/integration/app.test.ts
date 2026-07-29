@@ -4,6 +4,16 @@ import { app } from '../../src/app.js';
 
 describe('API foundation', () => {
   const validToken = 'test-token';
+  const swaggerCsp = [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline'",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data:",
+    "font-src 'self' data:",
+    "connect-src 'self'",
+    "object-src 'none'",
+    "frame-ancestors 'none'",
+  ];
 
   it('returns health with the standard success structure', async () => {
     const response = await request(app).get('/api/health');
@@ -17,6 +27,49 @@ describe('API foundation', () => {
       },
     });
     expect(new Date(response.body.data.timestamp).toISOString()).toBe(response.body.data.timestamp);
+  });
+
+  it('serves Swagger HTML from its canonical trailing-slash URL', async () => {
+    const redirect = await request(app).get('/api/docs');
+    expect(redirect.status).toBe(301);
+    expect(redirect.headers.location).toBe('/api/docs/');
+    for (const directive of swaggerCsp) {
+      expect(redirect.headers['content-security-policy']).toContain(directive);
+    }
+
+    const response = await request(app).get('/api/docs/');
+    expect(response.status).toBe(200);
+    expect(response.headers['content-type']).toContain('text/html');
+    expect(response.text).toContain('<title>Swagger UI</title>');
+    expect(response.text).toContain('./swagger-ui-init.js');
+    expect(response.text).toContain('./swagger-ui-bundle.js');
+    expect(response.text).not.toContain('src="/swagger-ui');
+    expect(response.text).not.toContain('href="/swagger-ui');
+    for (const directive of swaggerCsp) {
+      expect(response.headers['content-security-policy']).toContain(directive);
+    }
+  });
+
+  it.each([
+    ['swagger-ui.css', 'text/css'],
+    ['swagger-ui-bundle.js', 'application/javascript'],
+    ['swagger-ui-standalone-preset.js', 'application/javascript'],
+    ['swagger-ui-init.js', 'application/javascript'],
+  ])('serves Swagger asset %s with its route-specific CSP', async (asset, contentType) => {
+    const response = await request(app).get(`/api/docs/${asset}`);
+    expect(response.status).toBe(200);
+    expect(response.headers['content-type']).toContain(contentType);
+    for (const directive of swaggerCsp) {
+      expect(response.headers['content-security-policy']).toContain(directive);
+    }
+  });
+
+  it('retains the stricter global Helmet CSP outside Swagger', async () => {
+    const response = await request(app).get('/api/health');
+    const csp = response.headers['content-security-policy'];
+    expect(csp).toContain("script-src 'self'");
+    expect(csp).toContain("script-src-attr 'none'");
+    expect(csp).not.toContain("script-src 'self' 'unsafe-inline'");
   });
 
   it.each(['http://localhost:3000', 'https://three-way-match-web.vercel.app'])(

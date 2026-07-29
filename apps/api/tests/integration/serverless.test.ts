@@ -50,8 +50,18 @@ describe('Vercel serverless handler', () => {
   it('serves Swagger UI and assets without a database connection', async () => {
     const connect = vi.fn<() => Promise<void>>();
     const deployedApp = createServerlessApp(connect);
-    expect((await request(deployedApp).get('/api/docs/')).status).toBe(200);
-    expect((await request(deployedApp).get('/api/docs/swagger-ui.css')).status).toBe(200);
+    const html = await request(deployedApp).get('/api/docs/');
+    expect(html.status).toBe(200);
+    expect(html.text).toContain('./swagger-ui-init.js');
+    expect(html.headers['content-security-policy']).toContain("script-src 'self' 'unsafe-inline'");
+    for (const asset of [
+      'swagger-ui.css',
+      'swagger-ui-bundle.js',
+      'swagger-ui-standalone-preset.js',
+      'swagger-ui-init.js',
+    ]) {
+      expect((await request(deployedApp).get(`/api/docs/${asset}`)).status).toBe(200);
+    }
     expect(connect).not.toHaveBeenCalled();
   });
 

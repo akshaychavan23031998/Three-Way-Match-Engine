@@ -13,11 +13,27 @@ import { apiRouter } from './routes/index.js';
 import { AppError } from './utils/app-error.js';
 import { sendSuccess } from './utils/response.js';
 
-type HelmetFactory = () => RequestHandler;
+interface HelmetFactory {
+  (): RequestHandler;
+  contentSecurityPolicy(options: { directives: Record<string, readonly string[]> }): RequestHandler;
+}
 
 const helmet =
   (helmetModule as unknown as { default?: HelmetFactory }).default ??
   (helmetModule as unknown as HelmetFactory);
+
+export const swaggerCspMiddleware = helmet.contentSecurityPolicy({
+  directives: {
+    defaultSrc: ["'self'"],
+    scriptSrc: ["'self'", "'unsafe-inline'"],
+    styleSrc: ["'self'", "'unsafe-inline'"],
+    imgSrc: ["'self'", 'data:'],
+    fontSrc: ["'self'", 'data:'],
+    connectSrc: ["'self'"],
+    objectSrc: ["'none'"],
+    frameAncestors: ["'none'"],
+  },
+});
 
 export const allowedCorsOrigins = env.CORS_ORIGIN.split(',')
   .map((origin) => origin.trim().replace(/\/+$/, ''))
@@ -35,13 +51,7 @@ app.use(
         return;
       }
 
-      callback(
-        new AppError(
-          403,
-          'cors_origin_denied',
-          'The request origin is not allowed',
-        ),
-      );
+      callback(new AppError(403, 'cors_origin_denied', 'The request origin is not allowed'));
     },
     methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Authorization', 'Content-Type'],
@@ -86,7 +96,10 @@ app.get('/api/ready', (_req, res) => {
   });
 });
 
-app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.get(/^\/api\/docs$/, swaggerCspMiddleware, (_req, res) => {
+  res.status(301).location('/api/docs/').end();
+});
+app.use('/api/docs', swaggerCspMiddleware, swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 if (env.NODE_ENV === 'test') {
   app.get('/api/__test/unexpected-error', requireAuth, () => {
