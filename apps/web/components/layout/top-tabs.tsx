@@ -1,16 +1,25 @@
 import { Badge } from '@/components/ui/badge';
 import { DASHBOARD_TABS } from '@/lib/constants';
-export function TopTabs() {
+
+export function TopTabs({
+  counts = [0, 0, 0, 0],
+}: {
+  counts?: readonly [number, number, number, number];
+}) {
+  const anchors = ['documents', 'line-items', 'documents', 'match-summary'] as const;
   return (
-    <nav className="flex gap-6 border-b px-6">
-      {DASHBOARD_TABS.map((tab, index) => (
-        <button
-          className={`py-4 text-sm font-medium ${index === 0 ? 'border-b-2 border-emerald-600 text-emerald-700' : 'text-slate-500'}`}
-          key={tab}
-        >
-          {tab} <Badge>0</Badge>
-        </button>
-      ))}
+    <nav aria-label="Match sections" className="overflow-x-auto rounded-xl border bg-white px-3">
+      <div className="flex min-w-max gap-2">
+        {DASHBOARD_TABS.map((tab, index) => (
+          <a
+            className="rounded px-3 py-3 text-sm font-medium text-slate-600 hover:text-emerald-700 focus-visible:ring-2 focus-visible:ring-emerald-500"
+            key={tab}
+            href={`#${anchors[index]}`}
+          >
+            {tab} <Badge>{counts[index]}</Badge>
+          </a>
+        ))}
+      </div>
     </nav>
   );
 }

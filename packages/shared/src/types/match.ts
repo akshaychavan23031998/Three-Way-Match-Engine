@@ -38,6 +38,9 @@ export interface MatchItem {
   pendingDelivery: number;
   poPrices: number[];
   invoicePrices: number[];
+  agreedRate?: number | undefined;
+  priceTolerance?: number | undefined;
+  masterMrp?: number | undefined;
   poMrps: number[];
   grnMrps: number[];
   invoiceMrps: number[];

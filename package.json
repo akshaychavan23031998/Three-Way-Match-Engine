@@ -19,6 +19,7 @@
     "format:check": "prettier --check .",
     "test": "npm run test:api",
     "test:api": "npm run test -w @three-way-match/api",
+    "test:web": "npm run test -w @three-way-match/web",
     "typecheck": "npm run typecheck -w @three-way-match/shared && npm run typecheck -w @three-way-match/api && npm run typecheck -w @three-way-match/web",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",

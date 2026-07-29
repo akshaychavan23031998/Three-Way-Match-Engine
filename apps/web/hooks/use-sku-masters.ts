@@ -1,32 +1,53 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { ApiSuccessResponse, SkuMaster, SkuMasterInput } from '@three-way-match/shared';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import type {
+  CreateSkuMasterInput,
+  SkuMasterListQuery,
+  UpdateSkuMasterInput,
+} from '@three-way-match/shared';
 import { apiClient } from '@/lib/api-client';
-export const useSkuMasters = () =>
+
+export const skuKeys = {
+  all: ['sku-masters'] as const,
+  list: (query: SkuMasterListQuery) => ['sku-masters', query] as const,
+  detail: (id: string) => ['sku-master', id] as const,
+};
+export const useSkuMasters = (query: SkuMasterListQuery) =>
   useQuery({
-    queryKey: ['sku-masters'],
-    queryFn: async () =>
-      (await apiClient.get<ApiSuccessResponse<SkuMaster[]>>('/masters/sku')).data.data,
+    queryKey: skuKeys.list(query),
+    queryFn: ({ signal }) => apiClient.listSkuMasters(query, signal),
+    placeholderData: keepPreviousData,
+  });
+export const useSkuMaster = (id?: string) =>
+  useQuery({
+    queryKey: skuKeys.detail(id ?? ''),
+    queryFn: ({ signal }) => apiClient.getSkuMaster(id ?? '', signal),
+    enabled: Boolean(id),
   });
 export const useCreateSkuMaster = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (input: SkuMasterInput) =>
-      (await apiClient.post<ApiSuccessResponse<SkuMaster>>('/masters/sku', input)).data.data,
-    onSuccess: () => void client.invalidateQueries({ queryKey: ['sku-masters'] }),
+    mutationFn: (input: CreateSkuMasterInput) => apiClient.createSkuMaster(input),
+    onSuccess: () => void client.invalidateQueries({ queryKey: skuKeys.all }),
   });
 };
 export const useUpdateSkuMaster = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, input }: { id: string; input: Partial<SkuMasterInput> }) =>
-      (await apiClient.patch<ApiSuccessResponse<SkuMaster>>(`/masters/sku/${id}`, input)).data.data,
-    onSuccess: () => void client.invalidateQueries({ queryKey: ['sku-masters'] }),
+    mutationFn: ({ id, input }: { id: string; input: UpdateSkuMasterInput }) =>
+      apiClient.updateSkuMaster(id, input),
+    onSuccess: (record) => {
+      client.setQueryData(skuKeys.detail(record.id), record);
+      void client.invalidateQueries({ queryKey: skuKeys.all });
+    },
   });
 };
 export const useDeleteSkuMaster = () => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => apiClient.delete(`/masters/sku/${id}`),
-    onSuccess: () => void client.invalidateQueries({ queryKey: ['sku-masters'] }),
+    mutationFn: (id: string) => apiClient.deleteSkuMaster(id),
+    onSuccess: (_data, id) => {
+      client.removeQueries({ queryKey: skuKeys.detail(id) });
+      void client.invalidateQueries({ queryKey: skuKeys.all });
+    },
   });
 };
