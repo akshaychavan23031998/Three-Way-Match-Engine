@@ -1,0 +1,25 @@
+{
+  "success": true,
+  "data": {
+    "poNumber": "CI4PO05788",
+    "status": "mismatch",
+    "reasons": [
+      {
+        "code": "invoice_date_after_po_date",
+        "message": "Invoice date is after the PO date",
+        "severity": "error"
+      }
+    ],
+    "items": [
+      {
+        "matchKey": "sku-001",
+        "description": "Sample item",
+        "orderedQuantity": 5345,
+        "receivedQuantity": 4705,
+        "invoicedQuantity": 4705,
+        "pendingDelivery": 640,
+        "reasons": []
+      }
+    ]
+  }
+}

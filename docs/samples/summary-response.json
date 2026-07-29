@@ -1,0 +1,14 @@
+{
+  "success": true,
+  "data": {
+    "poNumber": "CI4PO05788",
+    "status": "mismatch",
+    "documentCounts": { "purchaseOrders": 1, "grns": 1, "invoices": 1 },
+    "totals": {
+      "orderedQuantity": 5345,
+      "receivedQuantity": 4705,
+      "invoicedQuantity": 4705,
+      "pendingDelivery": 640
+    }
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "documentType": "invoice",
+  "invoiceNumber": "IN25MH2504251",
+  "poNumber": "CI4PO05788",
+  "invoiceDate": "2025-04-25",
+  "items": [{ "itemCode": "SKU-001", "quantity": 4705, "unitPrice": 100, "mrp": 120 }]
+}

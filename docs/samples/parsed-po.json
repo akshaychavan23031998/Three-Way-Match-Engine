@@ -1,0 +1,15 @@
+{
+  "documentType": "po",
+  "poNumber": "CI4PO05788",
+  "poDate": "2025-04-01",
+  "vendorName": "Sample Vendor",
+  "items": [
+    {
+      "itemCode": "SKU-001",
+      "description": "Sample item",
+      "quantity": 5345,
+      "unitPrice": 100,
+      "mrp": 120
+    }
+  ]
+}
