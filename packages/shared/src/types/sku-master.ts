@@ -1,15 +1,46 @@
 export interface SkuMaster {
   id: string;
   skuErpCode: string;
-  normalizedSkuErpCode: string;
   name: string;
-  eanCode: string;
-  normalizedEanCode: string;
-  hsnCode: string;
-  uom: string;
-  agreedRate: number;
-  mrp: number;
+  eanCode?: string | undefined;
+  hsnCode?: string | undefined;
+  uom?: string | undefined;
+  agreedRate?: number | undefined;
+  mrp?: number | undefined;
   priceTolerance: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
-export type SkuMasterInput = Omit<SkuMaster, 'id' | 'normalizedSkuErpCode' | 'normalizedEanCode'>;
+export interface CreateSkuMasterInput {
+  skuErpCode: string;
+  name: string;
+  eanCode?: string | undefined;
+  hsnCode?: string | undefined;
+  uom?: string | undefined;
+  agreedRate?: number | undefined;
+  mrp?: number | undefined;
+  priceTolerance?: number | undefined;
+}
+
+export interface UpdateSkuMasterInput {
+  skuErpCode?: string | undefined;
+  name?: string | undefined;
+  eanCode?: string | undefined;
+  hsnCode?: string | undefined;
+  uom?: string | undefined;
+  agreedRate?: number | undefined;
+  mrp?: number | undefined;
+  priceTolerance?: number | undefined;
+}
+
+export interface SkuMasterListQuery {
+  page: number;
+  limit: number;
+  search?: string | undefined;
+  sortBy: 'createdAt' | 'updatedAt' | 'skuErpCode' | 'name';
+  sortOrder: 'asc' | 'desc';
+}
+
+/** Backward-compatible frontend alias. */
+export type SkuMasterInput = CreateSkuMasterInput;

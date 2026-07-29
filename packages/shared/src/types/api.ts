@@ -1,8 +1,15 @@
 export interface ApiSuccessResponse<T> {
   success: true;
   data: T;
-  meta?: unknown;
+  meta?: PaginationMeta | Record<string, unknown> | null;
   message?: string;
+}
+
+export interface PaginationMeta {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
 }
 
 export interface ApiError {
