@@ -44,6 +44,6 @@ describe('frontend validation', () => {
   it('rejects oversized upload files', () => {
     const file = new File(['x'], 'large.pdf', { type: 'application/pdf' });
     Object.defineProperty(file, 'size', { value: MAX_UPLOAD_BYTES + 1 });
-    expect(validateUploadFile(file)).toContain('10 MB');
+    expect(validateUploadFile(file)).toContain('4 MB');
   });
 });

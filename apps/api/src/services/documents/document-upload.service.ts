@@ -13,7 +13,7 @@ import { normalizeCode } from '../../utils/normalize-code.js';
 import { parseDocument } from '../gemini/gemini.service.js';
 import { computeMatchForPoNumber } from '../matching/compute-match.service.js';
 import { serializeDocument } from './document.service.js';
-import { deleteStoredFile, fileExists } from './file-storage.service.js';
+import { deleteStoredFile, fileExists, isTemporaryUploadStorage } from './file-storage.service.js';
 
 export interface UploadInput {
   documentType: DocumentType;
@@ -90,8 +90,7 @@ export const processDocumentUpload = async (
       console.error('Match recomputation failed after a successful document upload');
     }
     return { ...serializeDocument(record), matchRecalculationStatus };
-  } catch (error: unknown) {
-    if (!persisted) await deleteStoredFile(input.file.filename);
-    throw error;
+  } finally {
+    if (!persisted || isTemporaryUploadStorage()) await deleteStoredFile(input.file.filename);
   }
 };

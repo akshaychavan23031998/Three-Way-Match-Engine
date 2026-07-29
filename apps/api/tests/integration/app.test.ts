@@ -19,6 +19,38 @@ describe('API foundation', () => {
     expect(new Date(response.body.data.timestamp).toISOString()).toBe(response.body.data.timestamp);
   });
 
+  it.each(['http://localhost:3000', 'https://three-way-match-web.vercel.app'])(
+    'allows configured CORS origin %s',
+    async (origin) => {
+      const response = await request(app).get('/api/health').set('Origin', origin);
+      expect(response.status).toBe(200);
+      expect(response.headers['access-control-allow-origin']).toBe(origin);
+    },
+  );
+
+  it('rejects an unknown browser origin', async () => {
+    const response = await request(app)
+      .get('/api/health')
+      .set('Origin', 'https://untrusted.example');
+    expect(response.status).toBe(403);
+    expect(response.body.error.code).toBe('cors_origin_denied');
+  });
+
+  it('allows requests without an Origin header', async () => {
+    expect((await request(app).get('/api/health')).status).toBe(200);
+  });
+
+  it('supports authenticated OPTIONS preflight', async () => {
+    const response = await request(app)
+      .options('/api/documents')
+      .set('Origin', 'https://three-way-match-web.vercel.app')
+      .set('Access-Control-Request-Method', 'POST')
+      .set('Access-Control-Request-Headers', 'authorization,content-type');
+    expect(response.status).toBe(204);
+    expect(response.headers['access-control-allow-methods']).toContain('OPTIONS');
+    expect(response.headers['access-control-allow-headers']).toContain('Authorization');
+  });
+
   it('logs in with valid credentials', async () => {
     const response = await request(app)
       .post('/api/auth/login')
@@ -50,10 +82,21 @@ describe('API foundation', () => {
   it('reports database readiness without exposing connection details', async () => {
     const response = await request(app).get('/api/ready');
     expect([200, 503]).toContain(response.status);
-    expect(response.body.data).toMatchObject({
-      status: response.status === 200 ? 'ready' : 'not_ready',
-      database: response.status === 200 ? 'connected' : 'disconnected',
-    });
+    if (response.status === 200) {
+      expect(response.body).toMatchObject({
+        success: true,
+        data: { status: 'ready', database: 'connected' },
+      });
+    } else {
+      expect(response.body).toEqual({
+        success: false,
+        error: {
+          code: 'database_unavailable',
+          message: 'The database is temporarily unavailable',
+          details: null,
+        },
+      });
+    }
     expect(JSON.stringify(response.body)).not.toContain('mongodb://');
   });
 

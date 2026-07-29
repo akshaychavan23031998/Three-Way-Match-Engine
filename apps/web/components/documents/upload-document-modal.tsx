@@ -11,13 +11,13 @@ import { Select } from '@/components/ui/select';
 
 const allowedMimes = new Set(['application/pdf', 'image/png', 'image/jpeg', 'image/webp']);
 const allowedExtensions = new Set(['pdf', 'png', 'jpg', 'jpeg', 'webp']);
-export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+export const MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
 export const validateUploadFile = (file?: File): string | null => {
   if (!file) return 'Select a document file.';
   const extension = file.name.split('.').pop()?.toLowerCase() ?? '';
   if (!allowedMimes.has(file.type) || !allowedExtensions.has(extension))
     return 'Use a PDF, PNG, JPG, JPEG, or WEBP file.';
-  if (file.size > MAX_UPLOAD_BYTES) return 'The file must be 10 MB or smaller.';
+  if (file.size > MAX_UPLOAD_BYTES) return 'The file must be 4 MB or smaller.';
   return null;
 };
 

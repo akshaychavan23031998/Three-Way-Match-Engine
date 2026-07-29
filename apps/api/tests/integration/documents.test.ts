@@ -5,6 +5,7 @@ import { MongoMemoryServer } from 'mongodb-memory-server';
 import request from 'supertest';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { app } from '../../src/app.js';
+import serverlessApp from '../../index.js';
 import { GrnModel } from '../../src/models/grn.model.js';
 import { InvoiceModel } from '../../src/models/invoice.model.js';
 import { PurchaseOrderModel } from '../../src/models/purchase-order.model.js';
@@ -16,6 +17,7 @@ import {
   ensureUploadDirectory,
   fileExists,
   getStoredFilePath,
+  resolveUploadDirectory,
 } from '../../src/services/documents/file-storage.service.js';
 import { AppError } from '../../src/utils/app-error.js';
 
@@ -75,6 +77,11 @@ afterAll(async () => {
 describe('document upload validation', () => {
   it('reports ready when the test database is connected', async () => {
     const response = await request(app).get('/api/ready');
+    expect(response.status).toBe(200);
+    expect(response.body.data).toMatchObject({ status: 'ready', database: 'connected' });
+  });
+  it('reports ready through the serverless Express entry point', async () => {
+    const response = await request(serverlessApp).get('/api/ready');
     expect(response.status).toBe(200);
     expect(response.body.data).toMatchObject({ status: 'ready', database: 'connected' });
   });
@@ -227,6 +234,42 @@ describe('document processing and API', () => {
       ),
     ).toBe(true);
     auditSpy.mockRestore();
+  });
+  it('removes a Vercel temporary file after successful persistence', async () => {
+    process.env.TEST_VERCEL_UPLOAD_DIR = path.join(
+      path.dirname(getStoredFilePath('x')),
+      'vercel-runtime',
+    );
+    process.env.VERCEL = '1';
+    try {
+      parseSpy.mockResolvedValue(po);
+      const created = await upload('purchase_order', 'temporary.pdf');
+      expect(created.status).toBe(201);
+      const stored = await PurchaseOrderModel.findById(created.body.data.id).lean();
+      expect(await fileExists(stored?.storedFileName ?? '')).toBe(false);
+    } finally {
+      await rm(resolveUploadDirectory(), { recursive: true, force: true });
+      delete process.env.VERCEL;
+      delete process.env.TEST_VERCEL_UPLOAD_DIR;
+    }
+  });
+  it('removes Vercel temporary files after parser failure', async () => {
+    process.env.TEST_VERCEL_UPLOAD_DIR = path.join(
+      path.dirname(getStoredFilePath('x')),
+      'vercel-runtime',
+    );
+    process.env.VERCEL = '1';
+    try {
+      parseSpy.mockRejectedValue(new AppError(503, 'parser_down', 'Parser unavailable'));
+      const response = await upload('purchase_order', 'parser-failure.pdf');
+      expect(response.status).toBe(503);
+      const names = await readdir(resolveUploadDirectory()).catch(() => []);
+      expect(names).toHaveLength(0);
+    } finally {
+      await rm(resolveUploadDirectory(), { recursive: true, force: true });
+      delete process.env.VERCEL;
+      delete process.env.TEST_VERCEL_UPLOAD_DIR;
+    }
   });
   it('lists with pagination, filtering and search', async () => {
     parseSpy.mockResolvedValueOnce(po);

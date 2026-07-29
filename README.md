@@ -57,10 +57,12 @@ Domain mismatches are successful HTTP 200 responses. Audit snapshots preserve ev
 
 ## Document processing flow
 
-The API stores a generated local filename, sends the file inline to the configured Gemini model,
-validates JSON, persists the parsed document, then synchronously recomputes the match. Upload stays
-successful if recomputation unexpectedly fails and reports `matchRecalculationStatus`. Deletion
-also recomputes; it remains successful if that recomputation fails.
+The API stores a generated temporary filename, sends the file inline to the configured Gemini
+model, validates JSON, persists the parsed document, then synchronously recomputes the match.
+Vercel uses `/tmp/three-way-match-uploads` and removes the source after processing; local and
+Docker deployments use `UPLOAD_DIR`. Upload stays successful if recomputation unexpectedly fails
+and reports `matchRecalculationStatus`. Deletion also recomputes and tolerates an already-removed
+source file.
 
 ## Authentication
 
@@ -112,8 +114,8 @@ API (`apps/api/.env`):
 | `AUTH_TOKEN`            | Yes         | Long random string; never commit it                           |
 | `GEMINI_API_KEY`        | For uploads | May be empty when upload parsing is unused                    |
 | `GEMINI_MODEL`          | No          | Default `gemini-2.5-flash`                                    |
-| `CORS_ORIGIN`           | Yes         | Exact web origin, e.g. `http://localhost:3000`                |
-| `MAX_UPLOAD_SIZE_BYTES` | No          | Positive integer; default `10485760`                          |
+| `CORS_ORIGIN`           | Yes         | Comma-separated exact web origins                             |
+| `MAX_UPLOAD_SIZE_BYTES` | No          | Positive integer; Vercel demo value `4194304`                 |
 | `UPLOAD_DIR`            | No          | Local directory; default `uploads`                            |
 
 Web (`apps/web/.env.local`): `NEXT_PUBLIC_API_BASE_URL=http://localhost:4000/api`.
@@ -131,7 +133,8 @@ codes remain strings. The API connects before listening and disconnects on SIGIN
 - Development: `npm run dev`, `npm run dev:api`, `npm run dev:web`
 - Quality: `npm run typecheck`, `npm run lint`, `npm run format:check`
 - Tests: `npm run test:api`, `npm run test:web`, `npm run test`
-- Builds: `npm run build`, `npm run build:api`, `npm run build:web`
+- Builds: `npm run build`, `npm run build:shared`, `npm run build:api`, `npm run build:web`,
+  `npm run vercel-build:api`, `npm run vercel-build:web`
 - Data/services: `npm run seed:sku`, `npm run docker:up`, `npm run docker:down`
 
 ## API routes
@@ -167,18 +170,20 @@ PNG, JPG/JPEG, and WEBP, not JSON.
 
 ## Deployment guide
 
-Recommended topology: Next.js on Vercel or equivalent, the API on a Docker-compatible
-Render/Railway/Fly.io-style provider, and MongoDB Atlas. Build the API with
-`docker build -f apps/api/Dockerfile .`; inject environment variables at runtime. Configure
-`CORS_ORIGIN` to the deployed web origin and `NEXT_PUBLIC_API_BASE_URL` to the public API `/api`.
-Use `/api/health` for liveness and `/api/ready` for readiness. See
-[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+The same repository can back two Vercel projects: `three-way-match-api` rooted at `apps/api` with
+the Express preset, and `three-way-match-web` rooted at `apps/web` with the Next.js preset. Both
+must include source files outside their root so npm workspaces and `packages/shared` are available.
+The API default export in `apps/api/index.ts` is one Vercel Function; local `server.ts` and Docker
+remain unchanged. Use MongoDB Atlas, configure exact CORS origins, and set the frontend base URL to
+`https://<api-project>.vercel.app/api`. Exact dashboard settings and deployment order are in
+[docs/VERCEL-CHECKLIST.md](docs/VERCEL-CHECKLIST.md).
 
 ## Storage and security notes
 
-Uploads currently use local disk. Many cloud filesystems are ephemeral, so originals can disappear
-on restart/redeploy; persisted parsed data, summaries, and audit snapshots remain in MongoDB, but
-original-file access does not. Use persistent object storage in a production evolution.
+Vercel uploads are synchronous, limited to a 4 MiB demo file by this application, and removed from
+`/tmp` after success or failure. Parsed data, summaries, and audit snapshots remain in MongoDB.
+Large/complex files can exceed platform payload or function-duration limits; a future production
+version should use direct object-storage uploads and background processing.
 
 Practical protections include Helmet, configured CORS, strict validation, generated filenames,
 upload limits, safe error envelopes, secret redaction, and non-root Docker execution. This is not
@@ -188,7 +193,7 @@ rotation, per-user identity, or roles. Never commit environment files or custome
 ## Known limitations and future improvements
 
 - Static bearer auth; no OAuth, users, roles, or sessions
-- Local ephemeral uploads; no object storage
+- Temporary Vercel/local filesystem uploads; no durable object storage
 - Synchronous Gemini parsing/recomputation; no queue or progress channel
 - Summary listing uses assignment-scale in-memory composition
 - No OCR fallback, approvals, notifications, or real-time updates

@@ -10,11 +10,28 @@ import { errorMiddleware } from './middleware/error.middleware.js';
 import { notFoundMiddleware } from './middleware/not-found.middleware.js';
 import { requireAuth } from './middleware/auth.middleware.js';
 import { apiRouter } from './routes/index.js';
+import { AppError } from './utils/app-error.js';
 import { sendSuccess } from './utils/response.js';
+
+export const allowedCorsOrigins = env.CORS_ORIGIN.split(',')
+  .map((origin) => origin.trim().replace(/\/+$/, ''))
+  .filter(Boolean);
 
 export const app = express();
 app.use(helmet());
-app.use(cors({ origin: env.CORS_ORIGIN }));
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin || allowedCorsOrigins.includes(origin.replace(/\/+$/, ''))) {
+        callback(null, true);
+        return;
+      }
+      callback(new AppError(403, 'cors_origin_denied', 'The request origin is not allowed'));
+    },
+    methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Authorization', 'Content-Type'],
+  }),
+);
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true }));
 if (env.NODE_ENV !== 'test') app.use(morgan('combined'));
@@ -26,12 +43,22 @@ app.get('/api/health', (_req, res) => {
   });
 });
 app.get('/api/ready', (_req, res) => {
-  const ready = isDatabaseReady();
-  res.status(ready ? 200 : 503).json({
+  if (!isDatabaseReady()) {
+    res.status(503).json({
+      success: false,
+      error: {
+        code: 'database_unavailable',
+        message: 'The database is temporarily unavailable',
+        details: null,
+      },
+    });
+    return;
+  }
+  res.status(200).json({
     success: true,
     data: {
-      status: ready ? 'ready' : 'not_ready',
-      database: ready ? 'connected' : 'disconnected',
+      status: 'ready',
+      database: 'connected',
       timestamp: new Date().toISOString(),
     },
   });

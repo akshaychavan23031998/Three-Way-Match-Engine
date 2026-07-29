@@ -15,16 +15,43 @@ const positiveInteger = (name: string, defaultValue: number) =>
       `${name} must be a positive integer`,
     );
 
+const corsOriginList = z
+  .string()
+  .trim()
+  .min(1)
+  .refine((value) => {
+    const origins = value
+      .split(',')
+      .map((origin) => origin.trim())
+      .filter(Boolean);
+    return (
+      origins.length > 0 &&
+      origins.every((origin) => {
+        try {
+          const parsed = new URL(origin);
+          return (
+            (parsed.protocol === 'http:' || parsed.protocol === 'https:') &&
+            parsed.origin === origin.replace(/\/+$/, '')
+          );
+        } catch {
+          return false;
+        }
+      })
+    );
+  }, 'CORS_ORIGIN must contain comma-separated HTTP(S) origins');
+
+const defaultUploadSize = process.env.VERCEL ? 4 * 1024 * 1024 : 10 * 1024 * 1024;
+
 const schema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: positiveInteger('PORT', 4000),
   MONGODB_URI: z.string().min(1),
-  CORS_ORIGIN: z.string().url(),
+  CORS_ORIGIN: corsOriginList,
   AUTH_TOKEN: z.string().min(1),
   GEMINI_API_KEY: z.string().default(''),
   GEMINI_MODEL: z.string().min(1).default('gemini-2.5-flash'),
   UPLOAD_DIR: z.string().min(1).default('uploads'),
-  MAX_UPLOAD_SIZE_BYTES: positiveInteger('MAX_UPLOAD_SIZE_BYTES', 10 * 1024 * 1024),
+  MAX_UPLOAD_SIZE_BYTES: positiveInteger('MAX_UPLOAD_SIZE_BYTES', defaultUploadSize),
 });
 
 const defaults =

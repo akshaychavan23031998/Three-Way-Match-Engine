@@ -1,4 +1,5 @@
 .git
+.vercel
 .next
 **/dist
 **/node_modules

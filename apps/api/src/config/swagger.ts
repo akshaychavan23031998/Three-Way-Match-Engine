@@ -4,7 +4,7 @@ export const swaggerSpec = swaggerJsdoc({
   definition: {
     openapi: '3.0.3',
     info: { title: 'Three-Way Match Engine API', version: '1.0.0' },
-    servers: [{ url: 'http://localhost:4000/api' }],
+    servers: [{ url: '/api', description: 'Current deployment' }],
     components: {
       securitySchemes: {
         bearerAuth: { type: 'http', scheme: 'bearer', bearerFormat: 'Static token' },
@@ -260,8 +260,22 @@ export const swaggerSpec = swaggerJsdoc({
         get: {
           summary: 'Check API and database readiness',
           responses: {
-            '200': { description: 'API is ready to serve traffic' },
-            '503': { description: 'Database is not connected' },
+            '200': {
+              description: 'API is ready to serve traffic',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/SuccessResponse' },
+                },
+              },
+            },
+            '503': {
+              description: 'Database is temporarily unavailable',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/ErrorResponse' },
+                },
+              },
+            },
           },
         },
       },
