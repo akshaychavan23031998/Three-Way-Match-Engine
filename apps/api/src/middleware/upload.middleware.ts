@@ -1,28 +1,37 @@
-import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import multer from 'multer';
 import { env } from '../config/env.js';
+import {
+  buildStoredFileName,
+  deleteStoredFile,
+  ensureUploadDirectory,
+  getStoredFilePath,
+} from '../services/documents/file-storage.service.js';
 import { AppError } from '../utils/app-error.js';
 
-const allowed = new Set(['application/pdf', 'image/png', 'image/jpeg', 'image/webp']);
+const mimeTypes = new Set(['application/pdf', 'image/png', 'image/jpeg', 'image/webp']);
+const extensions = new Set(['.pdf', '.png', '.jpg', '.jpeg', '.webp']);
 const storage = multer.diskStorage({
-  destination: path.resolve(process.cwd(), env.UPLOAD_DIR),
-  filename: (_req, file, callback) => {
-    const extension = path.extname(file.originalname).toLowerCase();
-    callback(null, `${Date.now()}-${randomUUID()}${extension}`);
+  destination: (_req, _file, callback) => {
+    void ensureUploadDirectory()
+      .then(() => callback(null, path.dirname(getStoredFilePath('.destination'))))
+      .catch((error: unknown) => callback(error as Error, ''));
   },
+  filename: (_req, file, callback) => callback(null, buildStoredFileName(file.originalname)),
 });
-
-export const uploadDocument = multer({
+const uploader = multer({
   storage,
-  limits: { fileSize: env.MAX_FILE_SIZE_MB * 1024 * 1024 },
+  limits: { fileSize: env.MAX_UPLOAD_SIZE_MB * 1024 * 1024, files: 1 },
   fileFilter: (_req, file, callback) => {
-    if (!allowed.has(file.mimetype)) {
+    if (
+      !mimeTypes.has(file.mimetype.toLowerCase()) ||
+      !extensions.has(path.extname(file.originalname).toLowerCase())
+    ) {
       callback(
         new AppError(
-          415,
+          400,
           'unsupported_file_type',
-          'Only PDF, PNG, JPEG, and WebP files are accepted',
+          'Only PDF, PNG, JPG, JPEG and WEBP files are supported',
         ),
       );
       return;
@@ -30,3 +39,14 @@ export const uploadDocument = multer({
     callback(null, true);
   },
 }).single('file');
+export const uploadDocument: import('express').RequestHandler = (req, res, next) => {
+  uploader(req, res, (error: unknown) => {
+    if (!error) {
+      next();
+      return;
+    }
+    void (req.file?.filename ? deleteStoredFile(req.file.filename) : Promise.resolve())
+      .catch(() => undefined)
+      .then(() => next(error));
+  });
+};

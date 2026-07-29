@@ -193,6 +193,115 @@ export const swaggerSpec = swaggerJsdoc({
           },
         },
       },
+      '/documents/upload': {
+        post: {
+          summary: 'Upload and parse a procurement document',
+          security: [{ bearerAuth: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              'multipart/form-data': {
+                schema: {
+                  type: 'object',
+                  required: ['documentType', 'file'],
+                  properties: {
+                    documentType: {
+                      type: 'string',
+                      enum: ['purchase_order', 'grn', 'invoice'],
+                    },
+                    file: {
+                      type: 'string',
+                      format: 'binary',
+                      description: 'PDF, PNG, JPG, JPEG or WEBP',
+                    },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            '201': { description: 'Document parsed and persisted' },
+            '400': { $ref: '#/components/responses/ValidationError' },
+            '401': { $ref: '#/components/responses/Unauthorized' },
+            '413': { description: 'File exceeds the configured maximum size' },
+            '422': { description: 'Document content could not be parsed or validated' },
+            '503': { description: 'Document parser is temporarily unavailable' },
+            '500': { $ref: '#/components/responses/ServerError' },
+          },
+        },
+      },
+      '/documents': {
+        get: {
+          summary: 'List parsed documents',
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+            {
+              name: 'limit',
+              in: 'query',
+              schema: { type: 'integer', minimum: 1, maximum: 100, default: 20 },
+            },
+            {
+              name: 'documentType',
+              in: 'query',
+              schema: { type: 'string', enum: ['purchase_order', 'grn', 'invoice'] },
+            },
+            { name: 'search', in: 'query', schema: { type: 'string' } },
+            {
+              name: 'sortBy',
+              in: 'query',
+              schema: {
+                type: 'string',
+                enum: ['createdAt', 'updatedAt', 'originalFileName', 'documentDate'],
+                default: 'createdAt',
+              },
+            },
+            {
+              name: 'sortOrder',
+              in: 'query',
+              schema: { type: 'string', enum: ['asc', 'desc'], default: 'desc' },
+            },
+          ],
+          responses: {
+            '200': { description: 'Paginated document summaries' },
+            '400': { $ref: '#/components/responses/ValidationError' },
+            '401': { $ref: '#/components/responses/Unauthorized' },
+            '500': { $ref: '#/components/responses/ServerError' },
+          },
+        },
+      },
+      '/documents/{id}': {
+        parameters: [
+          {
+            name: 'id',
+            in: 'path',
+            required: true,
+            schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' },
+          },
+        ],
+        get: {
+          summary: 'Get a parsed document',
+          security: [{ bearerAuth: [] }],
+          responses: {
+            '200': { description: 'Parsed document' },
+            '400': { $ref: '#/components/responses/ValidationError' },
+            '401': { $ref: '#/components/responses/Unauthorized' },
+            '404': { $ref: '#/components/responses/NotFound' },
+            '500': { $ref: '#/components/responses/ServerError' },
+          },
+        },
+        delete: {
+          summary: 'Delete a parsed document and stored file',
+          security: [{ bearerAuth: [] }],
+          responses: {
+            '204': { description: 'Document deleted' },
+            '400': { $ref: '#/components/responses/ValidationError' },
+            '401': { $ref: '#/components/responses/Unauthorized' },
+            '404': { $ref: '#/components/responses/NotFound' },
+            '500': { $ref: '#/components/responses/ServerError' },
+          },
+        },
+      },
       '/masters/sku': {
         post: {
           summary: 'Create a SKU Master record',

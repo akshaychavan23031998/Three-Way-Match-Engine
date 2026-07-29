@@ -24,7 +24,7 @@ const schema = z.object({
   GEMINI_API_KEY: z.string().default(''),
   GEMINI_MODEL: z.string().min(1).default('gemini-2.5-flash'),
   UPLOAD_DIR: z.string().min(1).default('uploads'),
-  MAX_FILE_SIZE_MB: positiveInteger('MAX_FILE_SIZE_MB', 15),
+  MAX_UPLOAD_SIZE_MB: positiveInteger('MAX_UPLOAD_SIZE_MB', 10),
 });
 
 const defaults =

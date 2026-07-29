@@ -50,8 +50,10 @@ const describeError = (error: unknown): ErrorDescriptor => {
     return {
       statusCode: isSizeError ? 413 : 400,
       code: isSizeError ? 'file_too_large' : 'upload_error',
-      message: isSizeError ? 'The uploaded file exceeds the allowed size' : 'File upload failed',
-      details: null,
+      message: isSizeError
+        ? 'Uploaded file exceeds the maximum allowed size'
+        : 'File upload failed',
+      details: isSizeError ? { maxSizeMb: env.MAX_UPLOAD_SIZE_MB } : null,
     };
   }
   if (

@@ -67,7 +67,7 @@ describe('API foundation', () => {
 
   it('allows a valid bearer token to reach a protected placeholder', async () => {
     const response = await request(app)
-      .get('/api/documents')
+      .get('/api/match/test-po')
       .set('Authorization', `Bearer ${validToken}`);
 
     expect(response.status).toBe(501);

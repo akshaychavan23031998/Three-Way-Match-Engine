@@ -1,2 +1,3 @@
-export const buildGrnPrompt = (): string =>
-  'Extract this GRN. Return JSON only; no Markdown fences. Do not invent values. Use null for missing optional values, preserve item codes as strings, return dates as YYYY-MM-DD, and extract all visible line items.';
+export const buildGrnPrompt = (): string => `Extract the GRN into exactly this JSON shape:
+{"grnNumber":"string","grnDate":"YYYY-MM-DD","poNumber":"string","supplierName":null,"supplierCode":null,"items":[{"lineNumber":null,"skuErpCode":null,"eanCode":null,"description":"string","hsnCode":null,"uom":null,"receivedQuantity":0,"acceptedQuantity":null,"rejectedQuantity":null,"mrp":null}]}
+Return JSON only. No markdown fences, commentary, sensitive or unrelated content. Keep all codes and document numbers as strings. Use null for missing optional values and YYYY-MM-DD dates. Numeric values must be numbers. Never invent values. Preserve every line item separately; never merge lines. Ignore decorative headers and footers.`;

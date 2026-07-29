@@ -1,2 +1,3 @@
-export const buildInvoicePrompt = (): string =>
-  'Extract this invoice. Return JSON only; no Markdown fences. Do not invent values. Use null for missing optional values, preserve item codes as strings, return dates as YYYY-MM-DD, and extract all visible line items.';
+export const buildInvoicePrompt = (): string => `Extract the INVOICE into exactly this JSON shape:
+{"invoiceNumber":"string","invoiceDate":"YYYY-MM-DD","poNumber":"string","supplierName":null,"supplierCode":null,"currency":null,"items":[{"lineNumber":null,"skuErpCode":null,"eanCode":null,"description":"string","hsnCode":null,"uom":null,"invoicedQuantity":0,"unitPrice":0,"mrp":null,"lineTotal":null}],"subtotal":null,"taxAmount":null,"totalAmount":null}
+Return JSON only. No markdown fences, commentary, sensitive or unrelated content. Keep all codes and document numbers as strings. Use null for missing optional values and YYYY-MM-DD dates. Numeric values must be numbers. Never invent values. Preserve every line item separately; never merge lines. Ignore decorative headers and footers.`;
