@@ -129,12 +129,7 @@ export function UploadDocumentModal({
           />
         )}
         <div className="flex justify-end gap-2">
-          <Button
-            type="button"
-            className="bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50"
-            onClick={close}
-            disabled={mutation.isPending}
-          >
+          <Button type="button" variant="secondary" onClick={close} disabled={mutation.isPending}>
             {result ? 'Close' : 'Cancel'}
           </Button>
           <Button

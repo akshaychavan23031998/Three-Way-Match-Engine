@@ -28,11 +28,7 @@ export function DeleteSkuDialog({ record, onClose }: { record?: SkuMaster; onClo
         </div>
       )}
       <div className="mt-5 flex justify-end gap-2">
-        <Button
-          className="bg-white text-slate-700 ring-1 ring-slate-300"
-          onClick={onClose}
-          disabled={mutation.isPending}
-        >
+        <Button type="button" variant="secondary" onClick={onClose} disabled={mutation.isPending}>
           Cancel
         </Button>
         <Button

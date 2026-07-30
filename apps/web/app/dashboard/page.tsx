@@ -67,7 +67,7 @@ function DashboardContent() {
           </div>
           <div className="flex gap-2">
             <Button
-              className="bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50"
+              variant="secondary"
               onClick={() => void query.refetch()}
               disabled={query.isFetching}
             >

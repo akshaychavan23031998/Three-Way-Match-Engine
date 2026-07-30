@@ -11,6 +11,7 @@ import { EmptyState, InlineError, SkeletonRows } from '@/components/ui/feedback'
 import { Input } from '@/components/ui/input';
 import { Pagination } from '@/components/ui/pagination';
 import { Select } from '@/components/ui/select';
+import { buttonClassName } from '@/components/ui/button';
 import { useSkuMasters } from '@/hooks/use-sku-masters';
 
 export default function MastersPage() {
@@ -31,11 +32,8 @@ export default function MastersPage() {
             <h1 className="text-2xl font-bold">SKU Master catalogue</h1>
             <p className="text-sm text-slate-500">Manage deterministic ERP and EAN mappings.</p>
           </div>
-          <Link
-            href="/masters/new"
-            className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white focus-visible:ring-2"
-          >
-            <Plus className="mr-2 inline size-4" />
+          <Link href="/masters/new" className={buttonClassName()}>
+            <Plus className="mr-2 size-4" />
             Add SKU
           </Link>
         </div>

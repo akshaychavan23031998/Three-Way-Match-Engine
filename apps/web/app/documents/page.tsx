@@ -252,7 +252,8 @@ export default function DocumentsPage() {
         )}
         <div className="mt-5 flex justify-end gap-2">
           <Button
-            className="bg-white text-slate-700 ring-1 ring-slate-300"
+            type="button"
+            variant="secondary"
             onClick={() => setDeleting(undefined)}
             disabled={deletion.isPending}
           >
