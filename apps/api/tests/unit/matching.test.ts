@@ -98,15 +98,59 @@ describe('matching aggregation and identity', () => {
       ])[0]?.invoicePrices,
     ).toEqual([100, 110]);
   });
+  it('clamps pending delivery to zero when accepted quantity exceeds the order', () => {
+    const result = aggregateItems([
+      line('purchase_order', 100),
+      line('grn', 110, { acceptedQuantity: 110 }),
+    ])[0];
+    expect(result?.pendingDelivery).toBe(0);
+  });
 });
 
 describe('matching rules', () => {
   it.each([
-    ['exact', 10, 0],
-    ['under', 9, 1],
-    ['over', 11, 1],
-  ])('GRN quantity %s', (_label, acceptedQuantity, expected) => {
-    expect(checkGrnQuantity(item({ acceptedQuantity }))).toHaveLength(expected);
+    ['exact', 100, 100, 0, undefined],
+    ['short delivery', 100, 90, 1, 'warning'],
+    ['over-delivery', 100, 110, 1, 'error'],
+    ['rejected goods', 100, 80, 1, 'warning'],
+  ] as const)(
+    'classifies GRN quantity for %s',
+    (_label, orderedQuantity, acceptedQuantity, expectedCount, severity) => {
+      const reasons = checkGrnQuantity(
+        item({
+          orderedQuantity,
+          receivedQuantity: _label === 'rejected goods' ? 100 : acceptedQuantity,
+          acceptedQuantity,
+          rejectedQuantity: _label === 'rejected goods' ? 20 : 0,
+        }),
+      );
+      expect(reasons).toHaveLength(expectedCount);
+      expect(reasons[0]?.severity).toBe(severity);
+    },
+  );
+  it.each([99.99995, 100, 100.00005])(
+    'accepts GRN quantity %s within the comparison tolerance',
+    (acceptedQuantity) => {
+      expect(
+        checkGrnQuantity(item({ orderedQuantity: 100, receivedQuantity: 100, acceptedQuantity })),
+      ).toEqual([]);
+    },
+  );
+  it('records short-delivery details without reporting a negative pending quantity', () => {
+    expect(
+      checkGrnQuantity(
+        item({
+          orderedQuantity: 100,
+          receivedQuantity: 90,
+          acceptedQuantity: 90,
+          pendingDelivery: 10,
+        }),
+      )[0],
+    ).toMatchObject({
+      code: 'grn_quantity_mismatch',
+      severity: 'warning',
+      details: { pendingDelivery: 10, exceedsOrder: false },
+    });
   });
   it('rejects invoices above ordered quantity', () => {
     expect(checkInvoiceQuantity(item({ invoicedQuantity: 11 }))[0]?.severity).toBe('error');

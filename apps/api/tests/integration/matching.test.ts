@@ -97,6 +97,60 @@ const createInvoice = (overrides: Record<string, unknown> = {}) =>
     ...overrides,
   });
 
+interface QuantityScenario {
+  receivedQuantity: number;
+  acceptedQuantity: number;
+  rejectedQuantity: number;
+  invoicedQuantity: number;
+}
+
+const createQuantityScenario = ({
+  receivedQuantity,
+  acceptedQuantity,
+  rejectedQuantity,
+  invoicedQuantity,
+}: QuantityScenario) =>
+  Promise.all([
+    createSku(),
+    createPo({
+      items: [
+        {
+          skuErpCode: 'SKU-1',
+          eanCode: 'EAN-1',
+          description: 'Item',
+          quantity: 100,
+          unitPrice: 50,
+          mrp: 150,
+        },
+      ],
+    }),
+    createGrn({
+      items: [
+        {
+          skuErpCode: 'SKU-1',
+          eanCode: 'EAN-1',
+          description: 'Item',
+          receivedQuantity,
+          acceptedQuantity,
+          rejectedQuantity,
+          mrp: 150,
+        },
+      ],
+    }),
+    createInvoice({
+      items: [
+        {
+          skuErpCode: 'SKU-1',
+          eanCode: 'EAN-1',
+          description: 'Item',
+          invoicedQuantity,
+          unitPrice: 50,
+          mrp: 150,
+        },
+      ],
+    }),
+  ]);
+
 let server: MongoMemoryServer;
 beforeAll(async () => {
   server = await MongoMemoryServer.create();
@@ -195,12 +249,113 @@ describe('match APIs', () => {
       expect(body).not.toContain(forbidden);
   });
   it.each([
-    [
-      'GRN quantity',
-      () =>
-        createGrn({ items: [{ skuErpCode: 'SKU-1', description: 'Item', receivedQuantity: 9 }] }),
-      'grn_quantity_mismatch',
-    ],
+    {
+      name: 'exact delivery',
+      quantities: {
+        receivedQuantity: 100,
+        acceptedQuantity: 100,
+        rejectedQuantity: 0,
+        invoicedQuantity: 100,
+      },
+      status: 'matched',
+      errorCodes: [],
+      warningCodes: [],
+      pendingDelivery: 0,
+    },
+    {
+      name: 'short delivery invoiced to accepted quantity',
+      quantities: {
+        receivedQuantity: 90,
+        acceptedQuantity: 90,
+        rejectedQuantity: 0,
+        invoicedQuantity: 90,
+      },
+      status: 'partially_matched',
+      errorCodes: [],
+      warningCodes: ['grn_quantity_mismatch'],
+      pendingDelivery: 10,
+    },
+    {
+      name: 'partial acceptance invoiced to accepted quantity',
+      quantities: {
+        receivedQuantity: 100,
+        acceptedQuantity: 80,
+        rejectedQuantity: 20,
+        invoicedQuantity: 80,
+      },
+      status: 'partially_matched',
+      errorCodes: [],
+      warningCodes: ['grn_quantity_mismatch'],
+      pendingDelivery: 20,
+    },
+    {
+      name: 'invoice above accepted quantity',
+      quantities: {
+        receivedQuantity: 100,
+        acceptedQuantity: 80,
+        rejectedQuantity: 20,
+        invoicedQuantity: 100,
+      },
+      status: 'mismatched',
+      errorCodes: ['invoice_quantity_mismatch'],
+      warningCodes: ['grn_quantity_mismatch'],
+      pendingDelivery: 20,
+    },
+    {
+      name: 'accepted quantity above ordered quantity',
+      quantities: {
+        receivedQuantity: 110,
+        acceptedQuantity: 110,
+        rejectedQuantity: 0,
+        invoicedQuantity: 100,
+      },
+      status: 'mismatched',
+      errorCodes: ['grn_quantity_mismatch'],
+      warningCodes: ['invoice_quantity_mismatch'],
+      pendingDelivery: 0,
+    },
+    {
+      name: 'short delivery with under-invoice',
+      quantities: {
+        receivedQuantity: 90,
+        acceptedQuantity: 90,
+        rejectedQuantity: 0,
+        invoicedQuantity: 80,
+      },
+      status: 'partially_matched',
+      errorCodes: [],
+      warningCodes: ['grn_quantity_mismatch', 'invoice_quantity_mismatch'],
+      pendingDelivery: 10,
+    },
+  ] as const)(
+    'classifies $name',
+    async ({ quantities, status, errorCodes, warningCodes, pendingDelivery }) => {
+      await createQuantityScenario(quantities);
+      const response = await request(app).post('/api/matches/PO-1/recompute').set(auth);
+      const reasons = response.body.data.reasons as Array<{ code: string; severity: string }>;
+      expect(response.body.data.status).toBe(status);
+      expect(reasons.filter(({ severity }) => severity === 'error').map(({ code }) => code)).toEqual(
+        errorCodes,
+      );
+      expect(
+        reasons.filter(({ severity }) => severity === 'warning').map(({ code }) => code),
+      ).toEqual(warningCodes);
+      expect(response.body.data.items[0].pendingDelivery).toBe(pendingDelivery);
+
+      if (status === 'partially_matched' && quantities.invoicedQuantity === 90) {
+        const summary = await request(app).get('/api/summary?search=PO-1').set(auth);
+        expect(summary.body.data[0]).toMatchObject({
+          status: 'partially_matched',
+          mismatchCount: 0,
+          warningCount: 1,
+          poAmount: 5000,
+          invoiceAmount: 4500,
+          amountDifference: -500,
+        });
+      }
+    },
+  );
+  it.each([
     [
       'invoice quantity',
       () =>
@@ -244,11 +399,7 @@ describe('match APIs', () => {
     ],
   ])('detects %s mismatch', async (_name, createProblemInvoiceOrGrn, code) => {
     await Promise.all([createSku(), createPo()]);
-    if (code === 'grn_quantity_mismatch') {
-      await Promise.all([createProblemInvoiceOrGrn(), createInvoice()]);
-    } else {
-      await Promise.all([createGrn(), createProblemInvoiceOrGrn()]);
-    }
+    await Promise.all([createGrn(), createProblemInvoiceOrGrn()]);
     const response = await request(app).post('/api/matches/PO-1/recompute').set(auth);
     expect(response.body.data.status).toBe('mismatched');
     expect(response.body.data.reasons.map(({ code: value }: { code: string }) => value)).toContain(

@@ -7,12 +7,15 @@ export const checkGrnQuantity = (item: AggregatedMatchItem): MatchReason[] => {
   if (item.orderedQuantity === 0 || item.receivedQuantity === 0) return [];
   const comparisonQuantity = item.acceptedQuantity;
   if (Math.abs(item.orderedQuantity - comparisonQuantity) <= EPSILON) return [];
+  const exceedsOrder = comparisonQuantity - item.orderedQuantity > EPSILON;
   return [
-    reason('grn_quantity_mismatch', 'error', {
+    reason('grn_quantity_mismatch', exceedsOrder ? 'error' : 'warning', {
       orderedQuantity: item.orderedQuantity,
       receivedQuantity: item.receivedQuantity,
       acceptedQuantity: item.acceptedQuantity,
       rejectedQuantity: item.rejectedQuantity,
+      pendingDelivery: item.pendingDelivery,
+      exceedsOrder,
     }),
   ];
 };

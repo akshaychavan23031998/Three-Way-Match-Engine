@@ -59,7 +59,7 @@ export const aggregateItems = (lines: MatchLine[]): AggregatedMatchItem[] => {
         acceptedQuantity,
         rejectedQuantity,
         invoicedQuantity,
-        pendingDelivery: round(orderedQuantity - acceptedQuantity),
+        pendingDelivery: round(Math.max(0, orderedQuantity - acceptedQuantity)),
         poPrices: distinct(
           po.flatMap(({ unitPrice }) => (unitPrice === undefined ? [] : [unitPrice])),
         ),

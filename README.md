@@ -169,7 +169,7 @@ flowchart LR
 | Status | Meaning |
 |---|---|
 | `matched` | All required documents exist and relevant quantities, rates, SKUs, and MRP values agree |
-| `partially_matched` | Some values agree, but there is an incomplete delivery or limited discrepancy |
+| `partially_matched` | Delivery or acceptance is incomplete, but the invoice does not exceed accepted goods and no error-level rule fails |
 | `mismatched` | Important quantity, price, SKU, MRP, or duplicate-document conflicts exist |
 | `pending` | A required document is missing or the reconciliation is not yet complete |
 
@@ -234,17 +234,23 @@ Received quantity = Sum of GRN received quantities
 Accepted quantity = Sum of GRN accepted quantities
 Rejected quantity = Sum of GRN rejected quantities
 Invoiced quantity = Sum of invoice quantities
-Pending quantity  = Ordered quantity - Received quantity
+Pending quantity  = max(0, Ordered quantity - Accepted quantity)
 ```
 
 Typical discrepancy examples:
 
 ```text
 Received < Ordered
-→ Pending delivery
+→ Short delivery warning and a partially matched result when the invoice does not exceed accepted quantity
+
+Accepted < Ordered
+→ Pending delivery or incomplete acceptance; warning-level GRN reason
+
+Accepted > Ordered
+→ Error-level GRN quantity mismatch
 
 Invoiced > Accepted
-→ Supplier may be billing for goods not accepted
+→ Error-level invoice quantity mismatch because the supplier may be billing for goods not accepted
 
 Invoiced > Received
 → Supplier may be billing for goods not received
@@ -252,6 +258,10 @@ Invoiced > Received
 Accepted + Rejected != Received
 → GRN internal quantity inconsistency
 ```
+
+For example, an order for 100 units with 90 accepted and 90 invoiced is `partially_matched`
+with 10 units pending. If 100 units are invoiced while only 90 were accepted, the result is
+`mismatched`.
 
 ---
 
